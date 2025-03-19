@@ -1,0 +1,14 @@
+inherits:
+  - duplicated
+  - utils:base
+  - utils:no-design-checks
+  - utils:c2cwsgiutils
+  - utils:fix
+
+mypy:
+  options:
+    python-version: '3.10'
+
+ruff:
+  options:
+    target-version: py310

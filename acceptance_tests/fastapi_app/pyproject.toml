@@ -1,0 +1,31 @@
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = "A sample fastapi project"
+authors = ["Camptocamp <info@camptocamp.com>"]
+readme = "README.md"
+
+[[tool.poetry.packages]]
+include = "fastapi_app"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+fastapi = {extras = ["standard"], version = "0.115.11"}
+sentry-sdk = {extras = ["fastapi"], version = "2.23.1"}
+
+[tool.poetry.group.dev.dependencies]
+prospector = { extras = ["with_mypy", "with_bandit", "with_pyroma", "with_ruff"], version = "1.15.3" }
+prospector-profile-duplicated = "1.10.5"
+prospector-profile-utils = "1.22.3"
+pytest = "8.3.5"
+
+[tool.build-system]
+requires = [ "poetry-core",]
+build-backend = "poetry.core.masonry.api"
