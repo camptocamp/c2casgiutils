@@ -1,0 +1,7 @@
+services:
+  app:
+    command:
+      - uvicorn
+      - fast_api.main:app
+      - --port=8080
+      - --reload

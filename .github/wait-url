@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+# Copyright (c) 2025, Camptocamp SA
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# The views and conclusions contained in the software and documentation are those
+# of the authors and should not be interpreted as representing official policies,
+# either expressed or implied, of the FreeBSD Project.
+
+
+import sys
+import time
+import argparse
+import requests
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Wait for the URL to be reachable")
+    parser.add_argument("--sleep-time", help="The time to wait between each try", type=int, default=2)
+    parser.add_argument("--max-sleep", help="The maximum time to wait", type=int, default=60)
+    parser.add_argument("url", help="The URL to wait for")
+    args = parser.parse_args()
+
+    sleep = 0
+    while sleep < args.max_sleep:
+        try:
+            response = requests.get(args.url)
+            if response.status_code == 200:
+                sys.exit(0)
+        except Exception as e:
+            print(str(e))
+
+        time.sleep(args.sleep_time)
+        sleep += args.sleep_time
+    sys.exit(1)

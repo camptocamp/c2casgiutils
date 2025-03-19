@@ -1,9 +1,11 @@
 import os
 
 import sentry_sdk
-from app.api.v1.endpoints import hello
-from c2casgiutils import tools
+
+# from c2casgiutils import tools
 from fastapi import APIRouter
+
+from fastapi_app.api.v1.endpoints import hello
 
 if "SENTRY_URL" in os.environ:
     sentry_sdk.init(
@@ -14,4 +16,4 @@ if "SENTRY_URL" in os.environ:
     )
 api_router = APIRouter()
 api_router.include_router(hello.router, prefix="/v1")
-api_router.include_router(tools.router, prefix="/c2c")
+# api_router.include_router(tools.router, prefix="/c2c")

@@ -31,13 +31,13 @@ classifiers = [
     'Topic :: Internet :: WWW/HTTP :: WSGI :: Application',
     'Typing :: Typed',
 ]
-packages = [{ include = "c2cwsgiutils" }]
+packages = [{ include = "c2casgiutils" }]
 include = [
 "c2casgiutils/py.typed",
 ]
 
 [tool.poetry.scripts]
-c2cwsgiutils-genversion = "c2cwsgiutils.scripts.genversion:main"
+c2casgiutils-genversion = "c2casgiutils.scripts.genversion:main"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
