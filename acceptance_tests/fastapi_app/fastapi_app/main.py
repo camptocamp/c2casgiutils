@@ -1,8 +1,8 @@
-from app.api.v1.api import api_router as api_router_v1
-from app.core.config import settings
 from fastapi import FastAPI
-from pydantic.generics import GenericModel
-from starlette.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from fastapi_app.api.v1.api import api_router as api_router_v1
+from fastapi_app.core.config import settings
 
 # Core Application Instance
 app = FastAPI(
@@ -12,17 +12,17 @@ app = FastAPI(
 )
 
 # Set all CORS origins enabled
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# if settings.BACKEND_CORS_ORIGINS:
+#    app.add_middleware(
+#        CORSMiddleware,
+#        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+#        allow_credentials=True,
+#        allow_methods=["*"],
+#        allow_headers=["*"],
+#    )
 
 
-class RootResponse(GenericModel):
+class RootResponse(BaseModel):
     """Response of the root endpoint."""
 
     message: str = ""
@@ -33,7 +33,7 @@ async def root() -> RootResponse:
     """
     Return a hello message.
     """
-    return {"message": "Hello World"}
+    return RootResponse(message="Hello World")
 
 
 # Add Routers

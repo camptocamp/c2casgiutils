@@ -5,6 +5,9 @@ inherits:
   - utils:c2cwsgiutils
   - utils:fix
 
+ignore-paths:
+  - acceptance_tests
+
 mypy:
   options:
     python-version: '3.10'

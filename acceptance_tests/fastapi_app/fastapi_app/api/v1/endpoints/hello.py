@@ -1,18 +1,17 @@
-from app.schemas.response_schema import IGetResponseBase
 from fastapi import APIRouter
-from pydantic.generics import GenericModel
+from pydantic import BaseModel
 
 router = APIRouter()
 
 
-class HelloResponse(GenericModel):
+class HelloResponse(BaseModel):
     """Response of the hello endpoint."""
 
     message: str = ""
 
 
 @router.get("/hello")
-async def hello() -> IGetResponseBase:
+async def hello() -> HelloResponse:
     """
     Get a hello message.
     """
