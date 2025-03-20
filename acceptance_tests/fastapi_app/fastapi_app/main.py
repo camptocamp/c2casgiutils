@@ -1,31 +1,44 @@
+import logging
+import os
+
+import sentry_sdk
+from c2casgiutils import tools
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from fastapi_app.api.v1.api import api_router as api_router_v1
-from fastapi_app.core.config import settings
+from fastapi_app.api import router as api_router
+
+_LOGGER = logging.getLogger(__name__)
+
+if "SENTRY_URL" in os.environ:
+    sentry_sdk.init(
+        dsn=os.environ["SENTRY_URL"],
+        # Add data like request headers and IP for users, if applicable;
+        # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+        send_default_pii=True,
+    )
 
 # Core Application Instance
 app = FastAPI(
     title="fastapi_app",
-    version=settings.API_VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url="/api/openapi.json",
 )
 
 # Set all CORS origins enabled
-# if settings.BACKEND_CORS_ORIGINS:
-#    app.add_middleware(
-#        CORSMiddleware,
-#        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-#        allow_credentials=True,
-#        allow_methods=["*"],
-#        allow_headers=["*"],
-#    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class RootResponse(BaseModel):
     """Response of the root endpoint."""
 
-    message: str = ""
+    message: str
 
 
 @app.get("/")
@@ -37,4 +50,6 @@ async def root() -> RootResponse:
 
 
 # Add Routers
-app.include_router(api_router_v1, prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix="/api")
+app.include_router(tools.router, prefix="/c2c")
+app.mount("/c2c_static", tools.static_router)

@@ -50,5 +50,5 @@ COPY pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache \
     python3 -m pip install --disable-pip-version-check --no-deps .
 
-CMD ["python3", "-m", "uvicorn", "fastapi_app.main:app", "--host=0.0.0.0", "--port=8080"]
+CMD ["uvicorn", "fastapi_app.main:app", "--host=0.0.0.0", "--port=8080"]
 EXPOSE 8080
