@@ -41,7 +41,7 @@ c2casgiutils-genversion = "c2casgiutils.scripts.genversion:main"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-fastapi = {extras = ["standard"], version = "0.115.11"}
+fastapi = {extras = ["standard"], version = "0.115.12"}
 
 [tool.poetry.extras]
 fastapi = [
@@ -78,8 +78,8 @@ default = "present"
 
 [build-system]
 requires = [
-  "poetry-core==2.1.1",
-  "poetry-dynamic-versioning[plugin]==1.7.1",
+  "poetry-core==2.1.2",
+  "poetry-dynamic-versioning[plugin]==1.8.2",
   "poetry-plugin-tweak-dependencies-version==1.5.2",
   "poetry-plugin-drop-python-upper-constraint==1.0.0",
 ]
