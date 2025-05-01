@@ -28,11 +28,11 @@
 # either expressed or implied, of the FreeBSD Project.
 
 
+import argparse
 import sys
 import time
-import argparse
-import requests
 
+import requests
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Wait for the URL to be reachable")
