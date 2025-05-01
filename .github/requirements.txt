@@ -1,4 +1,4 @@
-poetry==2.0.1
-pre-commit==4.1.0
+poetry==2.1.2
+pre-commit==4.2.0
 c2cciutils==1.7.3
 tag-publish==1.0.1
