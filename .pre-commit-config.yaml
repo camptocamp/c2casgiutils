@@ -20,7 +20,7 @@ repos:
       - id: trailing-whitespace
       - id: mixed-line-ending
   - repo: https://github.com/sbrunner/hooks
-    rev: 1.4.0
+    rev: 1.4.1
     hooks:
       - id: copyright
       - id: poetry2-lock
@@ -65,7 +65,7 @@ repos:
         args:
           - --line-length=110
   - repo: https://github.com/PyCQA/prospector
-    rev: v1.15.3
+    rev: v1.16.1
     hooks:
       - id: prospector
         args:
