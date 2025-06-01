@@ -19,7 +19,7 @@ include = "fastapi_app"
 python = ">=3.10,<3.13"
 fastapi = {extras = ["standard"], version = "0.115.12"}
 pydantic-settings = {version = "2.9.1"}
-sentry-sdk = {extras = ["fastapi"], version = "2.27.0"}
+sentry-sdk = {extras = ["fastapi"], version = "2.29.1"}
 
 [tool.poetry.group.dev.dependencies]
 prospector = { extras = ["with_mypy", "with_bandit", "with_pyroma", "with_ruff"], version = "1.15.3" }
