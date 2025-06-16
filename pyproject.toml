@@ -33,7 +33,9 @@ classifiers = [
 ]
 packages = [{ include = "c2casgiutils" }]
 include = [
-"c2casgiutils/py.typed",
+  "c2casgiutils/py.typed",
+  "c2casgiutils/tools/static/*",
+  "c2casgiutils/tools/templates/*",
 ]
 
 [tool.poetry.scripts]
@@ -41,15 +43,13 @@ c2casgiutils-genversion = "c2casgiutils.scripts.genversion:main"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-fastapi = {extras = ["standard"], version = "0.115.12"}
+fastapi = {extras = ["standard"], version = "0.115.12", optional=true}
+pydantic-settings = "2.8.1"
+aiofile = "3.9.0"
 
 [tool.poetry.extras]
-fastapi = [
-  "fastapi",
-]
-all = [
-  "fastapi",
-]
+fastapi = ["fastapi"]
+all = ["fastapi"]
 
 [tool.poetry.group.dev.dependencies]
 prospector = { version = "1.15.3", extras = ["with_bandit", "with_mypy", "with_pyroma", "with_ruff"] }
