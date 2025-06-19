@@ -46,6 +46,8 @@ python = ">=3.10,<4.0"
 fastapi = {extras = ["standard"], version = "0.115.12", optional=true}
 pydantic-settings = "2.8.1"
 aiofile = "3.9.0"
+prometheus-client = "0.22.1"
+prometheus-fastapi-instrumentator = "7.1.0"
 
 [tool.poetry.extras]
 fastapi = ["fastapi"]

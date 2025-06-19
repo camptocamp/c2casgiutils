@@ -5,6 +5,8 @@ import sentry_sdk
 from c2casgiutils import tools
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import start_http_server
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
 from fastapi_app.api import router as api_router
@@ -53,3 +55,12 @@ async def root() -> RootResponse:
 app.include_router(api_router, prefix="/api")
 app.include_router(tools.router, prefix="/c2c")
 app.mount("/c2c_static", tools.static_router)
+
+# Get Prometheus HTTP server port from environment variable with fallback to 9000
+prometheus_port = int(os.environ.get("PROMETHEUS_PORT", "9000"))
+start_http_server(prometheus_port)
+
+instrumentator = Instrumentator(
+    should_instrument_requests_inprogress=True,
+)
+instrumentator.instrument(app)
