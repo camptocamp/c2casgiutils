@@ -12,6 +12,10 @@ mypy:
   options:
     python-version: '3.10'
 
+bandit:
+  disable:
+    - B603 # subprocess call - check for execution of untrusted input
+
 ruff:
   options:
     target-version: py310
