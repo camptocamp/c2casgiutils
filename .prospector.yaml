@@ -19,3 +19,5 @@ bandit:
 ruff:
   options:
     target-version: py310
+  disable:
+    - S603 # `subprocess` call: check for execution of untrusted input - not the same value everytime
