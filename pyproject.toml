@@ -48,6 +48,9 @@ pydantic-settings = "2.8.1"
 aiofile = "3.9.0"
 prometheus-client = "0.22.1"
 prometheus-fastapi-instrumentator = "7.1.0"
+aiohttp = "3.12.13"
+pyjwt = "2.10.1"
+fastapi-sessions = "0.3.2"
 
 [tool.poetry.extras]
 fastapi = ["fastapi"]
