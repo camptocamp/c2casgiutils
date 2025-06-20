@@ -3,15 +3,12 @@ import logging
 import os
 import urllib.parse
 from enum import Enum
-from typing import Any, TypedDict, cast
+from typing import Annotated, Any, TypedDict, cast
 
 import jwt
-import pyramid.config
-import pyramid.request
-import pyramid.response
-from fastapi import Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyCookie, APIKeyHeader, APIKeyQuery
-from pyramid.httpexceptions import HTTPFound
 from requests_oauthlib import OAuth2Session
 
 _LOG = logging.getLogger(__name__)
@@ -68,9 +65,9 @@ class UserDetails(TypedDict, total=False):
 
 async def _is_auth_secret(
     response: Response,
-    query_secret: str = Depends(api_key_query),
-    header_secret: str = Depends(api_key_header),
-    cookie_secret: str = Depends(api_key_cookie),
+    query_secret: Annotated[str | None, Depends(api_key_query)] = None,
+    header_secret: Annotated[str | None, Depends(api_key_header)] = None,
+    cookie_secret: Annotated[str | None, Depends(api_key_cookie)] = None,
 ) -> bool:
     if _SECRET_ENV not in os.environ:
         return False
@@ -150,7 +147,7 @@ async def auth_required(request: Request, response: Response | None = None) -> b
 
     Usage:
         @app.get("/protected")
-        async def protected_route(auth: bool = Depends(auth_required)):
+        async def protected_route(auth: Annotated[bool, Depends(auth_required)]):
             return {"message": "You are authenticated"}
     """
     if not await is_auth(request, response):
@@ -262,9 +259,9 @@ async def require_access(
 
     Usage:
         @app.get("/admin")
-        async def admin_route(access: bool = Depends(
+        async def admin_route(access: Annotated[bool, Depends(
             lambda req, res: require_access(req, res, "org/repo", "admin")
-        )):
+        )]):
             return {"message": "You have admin access"}
     """
     if not await check_access(request, response, repo, access_type):
@@ -289,7 +286,7 @@ async def auth_dependency(request: Request, response: Response | None = None) ->
 
     Usage:
         @app.get("/")
-        async def root(auth_info: tuple = Depends(auth_dependency)):
+        async def root(auth_info: Annotated[tuple, Depends(auth_dependency)]):
             is_authenticated, user_details = auth_info
             if is_authenticated:
                 return {"message": f"Hello {user_details.get('name', 'User')}"}
@@ -298,128 +295,14 @@ async def auth_dependency(request: Request, response: Response | None = None) ->
     return await is_auth_user(request, response)
 
 
-# def get_auth_router() -> APIRouter:
-#    """
-#    Get a FastAPI router with authentication routes.
-#
-#    Usage:
-#        from fastapi import FastAPI
-#        from c2casgiutils.auth import get_auth_router
-#
-#        app = FastAPI()
-#        auth_router = get_auth_router()
-#        app.include_router(auth_router, prefix="/auth")
-#    """
-#    router = APIRouter()
-#
-#    @router.get("/login")
-#    async def login(
-#        response: Response,
-#        api_key: Annotated[str | None, Depends(api_key_header)] = None,
-#        secret: str | None = None,
-#    ) -> dict[str, str]:
-#        """Login with a secret."""
-#        if secret is None and api_key is None:
-#            raise HTTPException(
-#                status_code=status.HTTP_400_BAD_REQUEST,
-#                detail="Missing secret or X-API-Key header",
-#            )
-#
-#        actual_secret = secret or api_key
-#        expected = os.environ.get(_SECRET_ENV)
-#        if not expected or _hash_secret(actual_secret) != _hash_secret(expected):
-#            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid secret")
-#
-#        # Set cookie
-#        response.set_cookie(
-#            key=_SECRET_ENV,
-#            value=_hash_secret(actual_secret),
-#            max_age=_COOKIE_AGE,
-#            httponly=True,
-#            secure=True,
-#            samesite="strict",
-#        )
-#        return {"status": "success", "message": "Authentication successful"}
-#
-#    @router.get("/logout")
-#    async def logout(response: Response) -> dict[str, str]:
-#        """Logout by clearing the authentication cookie."""
-#        response.delete_cookie(key=_SECRET_ENV)
-#        return {"status": "success", "message": "Logged out successfully"}
-#
-#    @router.get("/status")
-#    async def auth_status(request: Request, response: Response) -> dict[str, Any]:
-#        """Get the authentication status."""
-#        auth, user = await is_auth_user(request, response)
-#        if auth:
-#            return {"authenticated": True, "user": user}
-#        return {"authenticated": False}
-#
-#    if os.environ.get(_GITHUB_CLIENT_ID_ENV) and os.environ.get(_GITHUB_AUTH_SECRET_ENV):
-#
-#        @router.get("/github/login")
-#        async def github_login() -> dict[str, str]:
-#            """Initialize GitHub OAuth login flow."""
-#            client_id = os.environ.get(_GITHUB_CLIENT_ID_ENV)
-#            auth_url = os.environ.get(_GITHUB_AUTH_URL_ENV, "https://github.com/login/oauth/authorize")
-#            scope = os.environ.get(_GITHUB_SCOPE_ENV, _GITHUB_SCOPE_DEFAULT)
-#            redirect_uri = os.environ.get("C2C_BASE_URL", "") + "/auth/github/callback"
-#
-#            oauth = OAuth2Session(client_id, scope=[scope], redirect_uri=redirect_uri)
-#            authorization_url, state = oauth.authorization_url(auth_url)
-#            del state  # Unused
-#
-#            return {"authorization_url": authorization_url}
-#
-#        @router.get("/github/callback")
-#        async def github_callback(request: Request, response: Response, code: str) -> dict[str, str]:
-#            """Handle GitHub OAuth callback."""
-#            client_id = os.environ.get(_GITHUB_CLIENT_ID_ENV)
-#            client_secret = os.environ.get(_GITHUB_CLIENT_SECRET_ENV)
-#            token_url = os.environ.get(_GITHUB_TOKEN_URL_ENV, "https://github.com/login/oauth/access_token")
-#            user_url = os.environ.get(_GITHUB_USER_URL_ENV, "https://api.github.com/user")
-#            redirect_uri = os.environ.get("C2C_BASE_URL", "") + "/auth/github/callback"
-#
-#            oauth = OAuth2Session(client_id, redirect_uri=redirect_uri)
-#            token = oauth.fetch_token(token_url, client_secret=client_secret, code=code)
-#
-#            user_data = oauth.get(user_url).json()
-#
-#            # Create JWT token
-#            user_details = {
-#                "login": user_data.get("login"),
-#                "name": user_data.get("name"),
-#                "url": user_data.get("html_url"),
-#                "token": token.get("access_token"),
-#            }
-#
-#            jwt_token = jwt.encode(user_details, os.environ.get(_GITHUB_AUTH_SECRET_ENV), algorithm="HS256")
-#
-#            # Set JWT as cookie
-#            cookie_name = os.environ.get(_GITHUB_AUTH_COOKIE_ENV, "c2c-auth-jwt")
-#            response.set_cookie(
-#                key=cookie_name,
-#                value=jwt_token,
-#                max_age=_COOKIE_AGE,
-#                httponly=True,
-#                secure=True,
-#                samesite="strict",
-#            )
-#
-#            # Redirect to success page or front page
-#            redirect_after_login = request.cookies.get("c2c-auth-redirect", "/")
-#            return {"status": "success", "redirect": redirect_after_login}
-#
-#    return router
-#
-def _github_login(request: pyramid.request.Request) -> dict[str, Any]:
+def _github_login(request: Request) -> dict[str, str]:
     """Get the view that start the authentication on GitHub."""
-    params = dict(request.params)
-    callback_url = _url(
-        request,
-        "c2c_github_callback",
-        {"came_from": params["came_from"]} if "came_from" in params else None,
-    )
+    params = dict(request.query_params)
+    callback_url = request.url_for("github_callback")
+    callback_url = str(callback_url)
+    if "came_from" in params:
+        callback_url = f"{callback_url}?came_from={params['came_from']}"
+
     proxy_url = os.environ.get(_GITHUB_AUTH_PROXY_URL_ENV, "")
     if proxy_url:
         url = (
@@ -444,22 +327,21 @@ def _github_login(request: pyramid.request.Request) -> dict[str, Any]:
     # State is used to prevent CSRF, keep this for later.
     if use_session:
         request.session["oauth_state"] = state
-    raise HTTPFound(location=authorization_url, headers=request.response.headers)
+    raise RedirectResponse(authorization_url, headers=request.response.headers)
 
 
-def _github_login_callback(request: pyramid.request.Request) -> dict[str, Any]:
+async def _github_login_callback(request: Request, response: Response) -> dict[str, str]:
     """
     Do the post login operation authentication on GitHub.
 
     This will use the oauth token to get the user details from GitHub.
     And ask the GitHub rest API the information related to the configured repository
-    to know witch kind of access the user have.
+    to know which kind of access the user have.
     """
-
     use_session = os.environ.get(_USE_SESSION_ENV, "").lower() == "true"
-    state = request.session["oauth_state"] if use_session else None
+    state = request.session.get("oauth_state") if use_session else None
 
-    callback_url = _url(request, "c2c_github_callback")
+    callback_url = str(request.url_for("github_callback"))
     proxy_url = os.environ.get(_GITHUB_AUTH_PROXY_URL_ENV, "")
     if proxy_url:
         url = (
@@ -476,15 +358,15 @@ def _github_login_callback(request: pyramid.request.Request) -> dict[str, Any]:
         state=state,
     )
 
-    if "error" in request.GET:
-        return dict(request.GET)
+    if request.query_params.get("error"):
+        return {"error": request.query_params.get("error")}
 
     token = oauth.fetch_token(
         token_url=os.environ.get(
             _GITHUB_TOKEN_URL_ENV,
             "https://github.com/login/oauth/access_token",
         ),
-        authorization_response=request.current_route_url(_query=request.GET),
+        authorization_response=str(request.url),
         client_secret=os.environ.get(_GITHUB_CLIENT_SECRET_ENV, ""),
     )
 
@@ -501,7 +383,7 @@ def _github_login_callback(request: pyramid.request.Request) -> dict[str, Any]:
         "url": user["html_url"],
         "token": token,
     }
-    request.response.set_cookie(
+    response.set_cookie(
         os.environ.get(
             _GITHUB_AUTH_COOKIE_ENV,
             "c2c-auth-jwt",
@@ -513,38 +395,42 @@ def _github_login_callback(request: pyramid.request.Request) -> dict[str, Any]:
             ),
             algorithm="HS256",
         ),
+        max_age=_COOKIE_AGE,
+        httponly=True,
+        secure=True,
+        samesite="strict",
     )
-    raise HTTPFound(
-        location=request.params.get("came_from", _url(request, "c2c_index")),
-        headers=request.response.headers,
-    )
+
+    # Redirect to success page or front page
+    redirect_after_login = request.cookies.get("c2c-auth-redirect", "/")
+    return RedirectResponse(redirect_after_login)
 
 
-def _url(request: pyramid.request.Request, route: str, params: dict[str, str] | None = None) -> str | None:
-    try:
-        return request.route_url(route, _query=params)  # type: ignore[no-any-return]
-    except KeyError:
-        return None
-
-
-def _github_logout(request: pyramid.request.Request) -> dict[str, Any]:
+async def _github_logout(request: Request, response: Response) -> dict[str, Any]:
     """Logout the user."""
-    request.response.delete_cookie(_SECRET_ENV)
-    request.response.delete_cookie(
-        os.environ.get(
-            request.registry.settings,
-            _GITHUB_AUTH_COOKIE_ENV,
-            "c2c-auth-jwt",
-        ),
-    )
-    raise HTTPFound(
-        location=request.params.get("came_from", _url(request, "c2c_index")),
-        headers=request.response.headers,
+    response.delete_cookie(key=_SECRET_ENV)
+    response.delete_cookie(
+        key=os.environ.get(_GITHUB_AUTH_COOKIE_ENV, "c2c-auth-jwt"),
     )
 
+    redirect_url = request.query_params.get("came_from", "/")
+    return RedirectResponse(redirect_url)
 
-def includeme(config: pyramid.config.Configurator) -> None:
-    """Initialize the index page."""
+
+def get_auth_router() -> APIRouter:
+    """
+    Get a FastAPI router with authentication routes.
+
+    Usage:
+        from fastapi import FastAPI
+        from c2casgiutils.auth import get_auth_router
+
+        app = FastAPI()
+        auth_router = get_auth_router()
+        app.include_router(auth_router, prefix="/auth")
+    """
+    router = APIRouter()
+
     auth_type_ = auth_type()
     if auth_type_ == AuthenticationType.SECRET:
         _LOG.warning(
@@ -552,15 +438,64 @@ def includeme(config: pyramid.config.Configurator) -> None:
             "protects from brute force attacks and the access grant is personal and can be revoked.",
         )
 
-    if auth_type_ == AuthenticationType.GITHUB:
-        config.add_route("c2c_github_login", "/github-login", request_method=("GET",))
-        config.add_view(_github_login, route_name="c2c_github_login", http_cache=0)
-        config.add_route("c2c_github_callback", "/github-callback", request_method=("GET",))
-        config.add_view(
-            _github_login_callback,
-            route_name="c2c_github_callback",
-            http_cache=0,
-            renderer="fast_json",
+    @router.get("/login")
+    async def login(
+        response: Response,
+        secret: str | None = None,
+        api_key: Annotated[str | None, Depends(api_key_header)] = None,
+    ) -> dict[str, str]:
+        """Login with a secret."""
+        if secret is None and api_key is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing secret or X-API-Key header",
+            )
+
+        actual_secret = secret or api_key
+        expected = os.environ.get(_SECRET_ENV)
+        if not expected or _hash_secret(actual_secret) != _hash_secret(expected):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid secret")
+
+        # Set cookie
+        response.set_cookie(
+            key=_SECRET_ENV,
+            value=_hash_secret(actual_secret),
+            max_age=_COOKIE_AGE,
+            httponly=True,
+            secure=True,
+            samesite="strict",
         )
-        config.add_route("c2c_github_logout", "/github-logout", request_method=("GET",))
-        config.add_view(_github_logout, route_name="c2c_github_logout", http_cache=0)
+        return {"status": "success", "message": "Authentication successful"}
+
+    @router.get("/logout")
+    async def logout(response: Response) -> dict[str, str]:
+        """Logout by clearing the authentication cookie."""
+        response.delete_cookie(key=_SECRET_ENV)
+        return {"status": "success", "message": "Logged out successfully"}
+
+    @router.get("/status")
+    async def auth_status(request: Request, response: Response) -> dict[str, Any]:
+        """Get the authentication status."""
+        auth, user = await is_auth_user(request, response)
+        if auth:
+            return {"authenticated": True, "user": user}
+        return {"authenticated": False}
+
+    if os.environ.get(_GITHUB_CLIENT_ID_ENV) and os.environ.get(_GITHUB_AUTH_SECRET_ENV):
+
+        @router.get("/github/login")
+        async def github_login(request: Request) -> dict[str, str]:
+            """Initialize GitHub OAuth login flow."""
+            return _github_login(request)
+
+        @router.get("/github/callback")
+        async def github_callback(request: Request, response: Response) -> dict[str, str]:
+            """Handle GitHub OAuth callback."""
+            return await _github_login_callback(request, response)
+
+        @router.get("/github/logout")
+        async def github_logout(request: Request, response: Response) -> dict[str, str]:
+            """Logout from GitHub authentication."""
+            return await _github_logout(request, response)
+
+    return router
