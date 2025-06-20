@@ -1,6 +1,5 @@
 import hashlib
 import logging
-import os
 import secrets
 import urllib.parse
 from enum import Enum
@@ -12,26 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyCookie, APIKeyHeader, APIKeyQuery
 
-_LOG = logging.getLogger(__name__)
-
-_COOKIE_AGE = 7 * 24 * 3600
-_SECRET_ENV = "C2C_SECRET"  # noqa: S105, secret # nosec
-_GITHUB_REPOSITORY_ENV = "C2C_AUTH_GITHUB_REPOSITORY"
-_GITHUB_ACCESS_TYPE_ENV = "C2C_AUTH_GITHUB_ACCESS_TYPE"
-_GITHUB_AUTH_URL_ENV = "C2C_AUTH_GITHUB_AUTH_URL"
-_GITHUB_TOKEN_URL_ENV = "C2C_AUTH_GITHUB_TOKEN_URL"  # noqa: S105, secret # nosec
-_GITHUB_USER_URL_ENV = "C2C_AUTH_GITHUB_USER_URL"
-_GITHUB_REPO_URL_ENV = "C2C_AUTH_GITHUB_REPO_URL"
-_GITHUB_CLIENT_ID_ENV = "C2C_AUTH_GITHUB_CLIENT_ID"
-_GITHUB_CLIENT_SECRET_ENV = "C2C_AUTH_GITHUB_CLIENT_SECRET"  # noqa: S105, secret # nosec
-_GITHUB_SCOPE_ENV = "C2C_AUTH_GITHUB_SCOPE"
-# To be able to use private repository
-_GITHUB_SCOPE_DEFAULT = "repo"
-_GITHUB_AUTH_COOKIE_ENV = "C2C_AUTH_GITHUB_COOKIE"
-_GITHUB_AUTH_SECRET_ENV = "C2C_AUTH_GITHUB_SECRET"  # noqa: S105, secret # nosec
-_GITHUB_AUTH_PROXY_URL_ENV = "C2C_AUTH_GITHUB_PROXY_URL"
-_USE_SESSION_ENV = "C2C_USE_SESSION"
-
+from c2casgiutils.config import settings
 
 _LOG = logging.getLogger(__name__)
 
@@ -39,7 +19,7 @@ _LOG = logging.getLogger(__name__)
 # Security schemes
 api_key_query = APIKeyQuery(name="secret", auto_error=False)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-api_key_cookie = APIKeyCookie(name=_SECRET_ENV, auto_error=False)
+api_key_cookie = APIKeyCookie(name=settings.AUTH_COOKIE, auto_error=False)
 
 
 class AuthConfig(TypedDict, total=False):
@@ -70,25 +50,25 @@ async def _is_auth_secret(
     header_secret: Annotated[str | None, Depends(api_key_header)] = None,
     cookie_secret: Annotated[str | None, Depends(api_key_cookie)] = None,
 ) -> bool:
-    if _SECRET_ENV not in os.environ:
+    if not settings.AUTH_SECRET:
         return False
 
-    expected = os.environ[_SECRET_ENV]
+    expected = settings.AUTH_SECRET
     secret = query_secret or header_secret
     secret_hash = cookie_secret if secret is None else _hash_secret(secret)
 
     if secret_hash is not None:
         if secret_hash == "" or secret == "":  # nosec
             # Logout
-            response.delete_cookie(key=_SECRET_ENV)
+            response.delete_cookie(key=settings.AUTH_COOKIE)
             return False
         if secret_hash != _hash_secret(expected):
             return False
         # Login or refresh the cookie
         response.set_cookie(
-            key=_SECRET_ENV,
+            key=settings.AUTH_COOKIE,
             value=secret_hash,
-            max_age=_COOKIE_AGE,
+            max_age=settings.AUTH_COOKIE_AGE,
             httponly=True,
             secure=True,
             samesite="strict",
@@ -99,7 +79,7 @@ async def _is_auth_secret(
 
 
 async def _is_auth_user_github(request: Request) -> tuple[bool, UserDetails]:
-    cookie_name = os.environ.get(_GITHUB_AUTH_COOKIE_ENV, "c2c-auth-jwt")
+    cookie_name = settings.AUTH_COOKIE
     cookie = request.cookies.get(cookie_name, "")
     if cookie:
         try:
@@ -107,7 +87,7 @@ async def _is_auth_user_github(request: Request) -> tuple[bool, UserDetails]:
                 "UserDetails",
                 jwt.decode(
                     cookie,
-                    os.environ.get(_GITHUB_AUTH_SECRET_ENV),
+                    settings.AUTH_GITHUB_SECRET,
                     algorithms=["HS256"],
                 ),
             )
@@ -172,13 +152,13 @@ class AuthenticationType(Enum):
 
 def auth_type() -> AuthenticationType | None:
     """Get the authentication type."""
-    if os.environ.get(_SECRET_ENV, "") != "":
+    if settings.AUTH_SECRET != "":
         return AuthenticationType.SECRET
 
-    has_client_id = os.environ.get(_GITHUB_CLIENT_ID_ENV, "") != ""
-    has_client_secret = os.environ.get(_GITHUB_CLIENT_SECRET_ENV, "") != ""
-    has_repo = os.environ.get(_GITHUB_REPOSITORY_ENV, "") != ""
-    secret = os.environ.get(_GITHUB_AUTH_SECRET_ENV, "")
+    has_client_id = settings.AUTH_GITHUB_CLIENT_ID != ""
+    has_client_secret = settings.AUTH_GITHUB_CLIENT_SECRET != ""
+    has_repo = settings.AUTH_GITHUB_REPOSITORY != ""
+    secret = settings.AUTH_GITHUB_SECRET
     has_secret = len(secret) >= 16
     if secret and not has_secret:
         _LOG.error(
@@ -220,10 +200,8 @@ async def check_access(
     return await check_access_config(
         request,
         {
-            "github_repository": (os.environ.get(_GITHUB_REPOSITORY_ENV, "") if repo is None else repo),
-            "github_access_type": (
-                os.environ.get(_GITHUB_ACCESS_TYPE_ENV, "pull") if access_type is None else access_type
-            ),
+            "github_repository": (settings.AUTH_GITHUB_REPOSITORY if repo is None else repo),
+            "github_access_type": (settings.AUTH_GITHUB_ACCESS_TYPE if access_type is None else access_type),
         },
     )
 
@@ -234,9 +212,12 @@ async def check_access_config(request: Request, auth_config: AuthConfig) -> bool
     if not auth:
         return False
 
-    repo_url = os.environ.get(_GITHUB_REPO_URL_ENV, "https://api.github.com/repos")
+    repo_url = settings.AUTH_GITHUB_REPO_URL
     token = user["token"]
-    headers = {"Authorization": f"Bearer {token['access_token']}", "Accept": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {token['access_token']}",
+        "Accept": "application/json",
+    }
 
     async with (
         aiohttp.ClientSession() as session,
@@ -307,7 +288,7 @@ def _github_login(request: Request) -> dict[str, str]:
     if "came_from" in params:
         callback_url = f"{callback_url}?came_from={params['came_from']}"
 
-    proxy_url = os.environ.get(_GITHUB_AUTH_PROXY_URL_ENV, "")
+    proxy_url = settings.AUTH_GITHUB_PROXY_URL
     if proxy_url:
         url = (
             proxy_url
@@ -321,9 +302,9 @@ def _github_login(request: Request) -> dict[str, str]:
     state = secrets.token_urlsafe(32)
 
     # Build authorization URL manually
-    auth_url = os.environ.get(_GITHUB_AUTH_URL_ENV, "https://github.com/login/oauth/authorize")
-    client_id = os.environ.get(_GITHUB_CLIENT_ID_ENV, "")
-    scope = os.environ.get(_GITHUB_SCOPE_ENV, _GITHUB_SCOPE_DEFAULT)
+    auth_url = settings.AUTH_GITHUB_AUTH_URL
+    client_id = settings.AUTH_GITHUB_CLIENT_ID
+    scope = settings.AUTH_GITHUB_SCOPE
 
     params = {
         "client_id": client_id,
@@ -334,7 +315,7 @@ def _github_login(request: Request) -> dict[str, str]:
     }
     authorization_url = f"{auth_url}?{urllib.parse.urlencode(params)}"
 
-    use_session = os.environ.get(_USE_SESSION_ENV, "").lower() == "true"
+    use_session = settings.AUTH_USE_SESSION
     # State is used to prevent CSRF, keep this for later.
     if use_session:
         request.session["oauth_state"] = state
@@ -349,7 +330,7 @@ async def _github_login_callback(request: Request, response: Response) -> dict[s
     And ask the GitHub rest API the information related to the configured repository
     to know which kind of access the user have.
     """
-    use_session = os.environ.get(_USE_SESSION_ENV, "").lower() == "true"
+    use_session = settings.AUTH_USE_SESSION
     stored_state = request.session.get("oauth_state") if use_session else None
     received_state = request.query_params.get("state")
     code = request.query_params.get("code")
@@ -362,7 +343,7 @@ async def _github_login_callback(request: Request, response: Response) -> dict[s
         return {"error": request.query_params.get("error")}
 
     callback_url = str(request.url_for("c2c_github_callback"))
-    proxy_url = os.environ.get(_GITHUB_AUTH_PROXY_URL_ENV, "")
+    proxy_url = settings.AUTH_GITHUB_PROXY_URL
     if proxy_url:
         url = (
             proxy_url
@@ -373,9 +354,9 @@ async def _github_login_callback(request: Request, response: Response) -> dict[s
         url = callback_url
 
     # Exchange code for token
-    token_url = os.environ.get(_GITHUB_TOKEN_URL_ENV, "https://github.com/login/oauth/access_token")
-    client_id = os.environ.get(_GITHUB_CLIENT_ID_ENV, "")
-    client_secret = os.environ.get(_GITHUB_CLIENT_SECRET_ENV, "")
+    token_url = settings.AUTH_GITHUB_TOKEN_URL
+    client_id = settings.AUTH_GITHUB_CLIENT_ID
+    client_secret = settings.AUTH_GITHUB_CLIENT_SECRET
 
     # Prepare token exchange
     token_data = {
@@ -395,8 +376,11 @@ async def _github_login_callback(request: Request, response: Response) -> dict[s
             token = await response_token.json()
 
         # Get user info
-        user_url = os.environ.get(_GITHUB_USER_URL_ENV, "https://api.github.com/user")
-        headers = {"Authorization": f"Bearer {token['access_token']}", "Accept": "application/json"}
+        user_url = settings.AUTH_GITHUB_USER_URL
+        headers = {
+            "Authorization": f"Bearer {token['access_token']}",
+            "Accept": "application/json",
+        }
 
         async with session.get(user_url, headers=headers) as response_user:
             if response_user.status != 200:
@@ -410,18 +394,13 @@ async def _github_login_callback(request: Request, response: Response) -> dict[s
         "token": token,
     }
     response.set_cookie(
-        os.environ.get(
-            _GITHUB_AUTH_COOKIE_ENV,
-            "c2c-auth-jwt",
-        ),
+        settings.AUTH_COOKIE,
         jwt.encode(
             cast("dict[str, Any]", user_information),
-            os.environ.get(
-                _GITHUB_AUTH_SECRET_ENV,
-            ),
+            settings.AUTH_GITHUB_SECRET,
             algorithm="HS256",
         ),
-        max_age=_COOKIE_AGE,
+        max_age=settings.AUTH_COOKIE_AGE,
         httponly=True,
         secure=True,
         samesite="strict",
@@ -434,9 +413,9 @@ async def _github_login_callback(request: Request, response: Response) -> dict[s
 
 async def _github_logout(request: Request, response: Response) -> dict[str, Any]:
     """Logout the user."""
-    response.delete_cookie(key=_SECRET_ENV)
+    response.delete_cookie(key=settings.AUTH_COOKIE)
     response.delete_cookie(
-        key=os.environ.get(_GITHUB_AUTH_COOKIE_ENV, "c2c-auth-jwt"),
+        key=settings.AUTH_COOKIE,
     )
 
     redirect_url = request.query_params.get("came_from", "/")
@@ -469,15 +448,15 @@ if _auth_type == AuthenticationType.SECRET:
             )
 
         actual_secret = secret or api_key
-        expected = os.environ.get(_SECRET_ENV)
+        expected = settings.AUTH_SECRET
         if not expected or _hash_secret(actual_secret) != _hash_secret(expected):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid secret")
 
         # Set cookie
         response.set_cookie(
-            key=_SECRET_ENV,
+            key=settings.AUTH_COOKIE,
             value=_hash_secret(actual_secret),
-            max_age=_COOKIE_AGE,
+            max_age=settings.AUTH_COOKIE_AGE,
             httponly=True,
             secure=True,
             samesite="strict",
@@ -487,7 +466,7 @@ if _auth_type == AuthenticationType.SECRET:
     @router.get("/logout")
     async def c2c_logout(response: Response) -> dict[str, str]:
         """Logout by clearing the authentication cookie."""
-        response.delete_cookie(key=_SECRET_ENV)
+        response.delete_cookie(key=settings.AUTH_COOKIE)
         return {"status": "success", "message": "Logged out successfully"}
 
 
