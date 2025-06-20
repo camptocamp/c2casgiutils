@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.routing import Router
 
+from c2casgiutils import auth, tools
+
 _LOGGER = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -19,14 +21,22 @@ _templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-async def c2c_tools(request: Request) -> str:
+async def c2c_index(request: Request) -> str:
     """Return the index.html tool file."""
+    is_auth, user = await auth.is_auth_user(request)
+
     return cast(
         "str",
         _templates.TemplateResponse(
             "index.html",
             {
                 "request": request,
+                "tools_app": tools.app,
+                "auth_app": auth.app,
+                "is_auth": is_auth,
+                "user": user,
+                "auth_type": auth.auth_type(),
+                "AuthenticationType": auth.AuthenticationType,
             },
         ),
     )

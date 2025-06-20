@@ -417,85 +417,74 @@ async def _github_logout(request: Request, response: Response) -> dict[str, Any]
     return RedirectResponse(redirect_url)
 
 
-def get_auth_router() -> APIRouter:
-    """
-    Get a FastAPI router with authentication routes.
+router = APIRouter()
 
-    Usage:
-        from fastapi import FastAPI
-        from c2casgiutils.auth import get_auth_router
+if auth_type() == AuthenticationType.SECRET:
+    _LOG.warning(
+        "It is recommended to use OAuth2 with GitHub login instead of the `C2C_SECRET` because it "
+        "protects from brute force attacks and the access grant is personal and can be revoked.",
+    )
 
-        app = FastAPI()
-        auth_router = get_auth_router()
-        app.include_router(auth_router, prefix="/auth")
-    """
-    router = APIRouter()
 
-    auth_type_ = auth_type()
-    if auth_type_ == AuthenticationType.SECRET:
-        _LOG.warning(
-            "It is recommended to use OAuth2 with GitHub login instead of the `C2C_SECRET` because it "
-            "protects from brute force attacks and the access grant is personal and can be revoked.",
+@router.get("/login")
+async def login(
+    response: Response,
+    secret: str | None = None,
+    api_key: Annotated[str | None, Depends(api_key_header)] = None,
+) -> dict[str, str]:
+    """Login with a secret."""
+    if secret is None and api_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing secret or X-API-Key header",
         )
 
-    @router.get("/login")
-    async def login(
-        response: Response,
-        secret: str | None = None,
-        api_key: Annotated[str | None, Depends(api_key_header)] = None,
-    ) -> dict[str, str]:
-        """Login with a secret."""
-        if secret is None and api_key is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing secret or X-API-Key header",
-            )
+    actual_secret = secret or api_key
+    expected = os.environ.get(_SECRET_ENV)
+    if not expected or _hash_secret(actual_secret) != _hash_secret(expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid secret")
 
-        actual_secret = secret or api_key
-        expected = os.environ.get(_SECRET_ENV)
-        if not expected or _hash_secret(actual_secret) != _hash_secret(expected):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid secret")
+    # Set cookie
+    response.set_cookie(
+        key=_SECRET_ENV,
+        value=_hash_secret(actual_secret),
+        max_age=_COOKIE_AGE,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
+    return {"status": "success", "message": "Authentication successful"}
 
-        # Set cookie
-        response.set_cookie(
-            key=_SECRET_ENV,
-            value=_hash_secret(actual_secret),
-            max_age=_COOKIE_AGE,
-            httponly=True,
-            secure=True,
-            samesite="strict",
-        )
-        return {"status": "success", "message": "Authentication successful"}
 
-    @router.get("/logout")
-    async def logout(response: Response) -> dict[str, str]:
-        """Logout by clearing the authentication cookie."""
-        response.delete_cookie(key=_SECRET_ENV)
-        return {"status": "success", "message": "Logged out successfully"}
+@router.get("/logout")
+async def c2c_logout(response: Response) -> dict[str, str]:
+    """Logout by clearing the authentication cookie."""
+    response.delete_cookie(key=_SECRET_ENV)
+    return {"status": "success", "message": "Logged out successfully"}
 
-    @router.get("/status")
-    async def auth_status(request: Request, response: Response) -> dict[str, Any]:
-        """Get the authentication status."""
-        auth, user = await is_auth_user(request, response)
-        if auth:
-            return {"authenticated": True, "user": user}
-        return {"authenticated": False}
 
-    if os.environ.get(_GITHUB_CLIENT_ID_ENV) and os.environ.get(_GITHUB_AUTH_SECRET_ENV):
+@router.get("/status")
+async def c2c_auth_status(request: Request, response: Response) -> dict[str, Any]:
+    """Get the authentication status."""
+    auth, user = await is_auth_user(request, response)
+    if auth:
+        return {"authenticated": True, "user": user}
+    return {"authenticated": False}
 
-        @router.get("/github/login")
-        async def github_login(request: Request) -> dict[str, str]:
-            """Initialize GitHub OAuth login flow."""
-            return _github_login(request)
 
-        @router.get("/github/callback")
-        async def github_callback(request: Request, response: Response) -> dict[str, str]:
-            """Handle GitHub OAuth callback."""
-            return await _github_login_callback(request, response)
+if os.environ.get(_GITHUB_CLIENT_ID_ENV) and os.environ.get(_GITHUB_AUTH_SECRET_ENV):
 
-        @router.get("/github/logout")
-        async def github_logout(request: Request, response: Response) -> dict[str, str]:
-            """Logout from GitHub authentication."""
-            return await _github_logout(request, response)
+    @router.get("/github/login")
+    async def c2c_github_login(request: Request) -> dict[str, str]:
+        """Initialize GitHub OAuth login flow."""
+        return _github_login(request)
 
-    return router
+    @router.get("/github/callback")
+    async def c2c_github_callback(request: Request, response: Response) -> dict[str, str]:
+        """Handle GitHub OAuth callback."""
+        return await _github_login_callback(request, response)
+
+    @router.get("/github/logout")
+    async def c2c_github_logout(request: Request, response: Response) -> dict[str, str]:
+        """Logout from GitHub authentication."""
+        return await _github_logout(request, response)
