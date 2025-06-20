@@ -2,7 +2,7 @@ import logging
 import os
 
 import sentry_sdk
-from c2casgiutils import tools
+from c2casgiutils import broadcast, tools
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import start_http_server
@@ -59,6 +59,13 @@ app.mount("/c2c_static", tools.static_router)
 # Get Prometheus HTTP server port from environment variable with fallback to 9000
 prometheus_port = int(os.environ.get("PROMETHEUS_PORT", "9000"))
 start_http_server(prometheus_port)
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Initialize broadcast functionality on startup."""
+    await broadcast.setup_fastapi(app)
+
 
 instrumentator = Instrumentator(
     should_instrument_requests_inprogress=True,

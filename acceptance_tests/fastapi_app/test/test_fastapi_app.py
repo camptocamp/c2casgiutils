@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import requests
 from c2cwsgiutils.acceptance import image
 
 
@@ -36,3 +37,34 @@ def test_screenshot(expected_file_name, width, height, headers, media):
         result_folder="results",
         expected_filename=str(Path(__file__).parent / expected_file_name),
     )
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        pytest.param("/api/hello", {"message": "hello"}),
+    ],
+)
+def test_endpoints(path, expected):
+    """
+    Test the API endpoints.
+    """
+    response = requests.get(f"http://localhost:8085{path}")
+    assert response.ok
+    assert response.json() == expected
+
+
+def test_broadcast():
+    """
+    Test the API endpoints.
+    """
+    response = requests.get("http://localhost:8085/api/broadcast")
+    assert response.ok
+    response_json = response.json()
+    assert "result" in response_json
+    assert isinstance(response_json["result"], list)
+    assert len(response_json["result"]) == 1
+    response_data = response_json["result"][0]
+    assert isinstance(response_data, dict)
+    assert set(response_data.keys()) == {"message", "hostname", "pid"}
+    assert response_data["message"] == "Broadcast echo"
