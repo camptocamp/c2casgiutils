@@ -9,6 +9,33 @@ services:
     environment:
       - BACKEND_CORS_ORIGINS
       - C2C__REDIS__URL=redis://redis:6379/0
+      - C2C__AUTH__JWT__SECRET=***
+      - C2C__AUTH__JWT__COOKIE__SECURE=False
+      - C2C__AUTH__GITHUB__CLIENT_ID=***
+      - C2C__AUTH__GITHUB__CLIENT_SECRET=***
+      - C2C__AUTH__GITHUB__REPOSITORY=camptocamp/geomapfish
+      - C2C__AUTH__GITHUB__ACCESS_TYPE=admin
+      - C2C__AUTH__GITHUB__SCOPE=repo
+      - C2C__AUTH__GITHUB__PROXY_URL=https://geoservices-int.camptocamp.com/redirect
+
+  app-auth:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./fast_api:/app
+    ports:
+      - 8086:8080
+    environment:
+      - BACKEND_CORS_ORIGINS
+      - C2C__AUTH__JWT__SECRET=***
+      - C2C__AUTH__JWT__COOKIE__SECURE=False
+      - C2C__AUTH__GITHUB__CLIENT_ID=***
+      - C2C__AUTH__GITHUB__CLIENT_SECRET=***
+      - C2C__AUTH__GITHUB__REPOSITORY=camptocamp/geomapfish
+      - C2C__AUTH__GITHUB__ACCESS_TYPE=admin
+      - C2C__AUTH__GITHUB__SCOPE=repo
+      - C2C__AUTH__GITHUB__PROXY_URL=https://geoservices-int.camptocamp.com/redirect
+      - C2C__AUTH__TEST__USERNAME=TestUser
 
   redis:
     image: bitnami/redis:7.4.3
