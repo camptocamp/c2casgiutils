@@ -4,22 +4,102 @@ import secrets
 import urllib.parse
 from enum import Enum
 from typing import Annotated, Any, TypedDict, cast
+from uuid import UUID, uuid4
 
 import aiohttp
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyCookie, APIKeyHeader, APIKeyQuery
+from fastapi_sessions.backends.implementations import InMemoryBackend
+from fastapi_sessions.frontends.implementations import CookieParameters, SessionCookie
+from fastapi_sessions.session_verifier import SessionVerifier
+from pydantic import BaseModel
 
 from c2casgiutils.config import settings
 
 _LOG = logging.getLogger(__name__)
 
-
 # Security schemes
 api_key_query = APIKeyQuery(name="secret", auto_error=False)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 api_key_cookie = APIKeyCookie(name=settings.AUTH_COOKIE, auto_error=False)
+
+
+# Session init start
+class _SessionData(BaseModel):
+    """Data stored in the session."""
+
+    # The OAuth state used for CSRF protection
+    # when using GitHub authentication.
+    oauth_state: str
+
+
+_cookie_params = CookieParameters()
+
+# Uses UUID
+_cookie = SessionCookie(
+    cookie_name=settings.AUTH_SESSION_COOKIE,
+    identifier="general_verifier",
+    auto_error=True,
+    secret_key=settings.AUTH_SESSION_SECRET,
+    cookie_params=_cookie_params,
+)
+
+_backend = InMemoryBackend[UUID, _SessionData]()
+
+
+class _BasicVerifier(SessionVerifier[UUID, _SessionData]):
+    """A basic session verifier that checks if the session exists."""
+
+    def __init__(
+        self,
+        *,
+        identifier: str,
+        auto_error: bool,
+        backend: InMemoryBackend[UUID, _SessionData],
+        auth_http_exception: HTTPException,
+    ) -> None:
+        """Initialize the session verifier."""
+        self._identifier = identifier
+        self._auto_error = auto_error
+        self._backend = backend
+        self._auth_http_exception = auth_http_exception
+
+    @property
+    def identifier(self) -> str:
+        """The identifier of the session verifier."""
+        return self._identifier
+
+    @property
+    def backend(self) -> InMemoryBackend[UUID, _SessionData]:
+        """The backend used to store the session data."""
+        return self._backend
+
+    @property
+    def auto_error(self) -> bool:
+        """Whether to raise an HTTP exception if the session is not valid."""
+        return self._auto_error
+
+    @property
+    def auth_http_exception(self) -> HTTPException:
+        """The HTTP exception to raise if the session is not valid."""
+        return self._auth_http_exception
+
+    def verify_session(self, model: _SessionData) -> bool:
+        """If the session exists, it is valid."""
+        del model  # Unused, but required by the interface
+        return True
+
+
+_verifier = _BasicVerifier(
+    identifier="general_verifier",
+    auto_error=True,
+    backend=_backend,
+    auth_http_exception=HTTPException(status_code=403, detail="invalid session"),
+)
+
+# Session init end
 
 
 class AuthConfig(TypedDict, total=False):
@@ -80,13 +160,13 @@ async def _is_auth_secret(
 
 async def _is_auth_user_github(request: Request) -> tuple[bool, UserDetails]:
     cookie_name = settings.AUTH_COOKIE
-    cookie = request.cookies.get(cookie_name, "")
-    if cookie:
+    cookie_ = request.cookies.get(cookie_name, "")
+    if cookie_:
         try:
             return True, cast(
                 "UserDetails",
                 jwt.decode(
-                    cookie,
+                    cookie_,
                     settings.AUTH_GITHUB_SECRET,
                     algorithms=["HS256"],
                 ),
@@ -280,7 +360,7 @@ async def auth_dependency(request: Request, response: Response | None = None) ->
     return await is_auth_user(request, response)
 
 
-def _github_login(request: Request) -> dict[str, str]:
+async def _github_login(request: Request, response: Response) -> dict[str, str]:
     """Get the view that start the authentication on GitHub."""
     params = dict(request.query_params)
     callback_url = request.url_for("c2c_github_callback")
@@ -315,14 +395,21 @@ def _github_login(request: Request) -> dict[str, str]:
     }
     authorization_url = f"{auth_url}?{urllib.parse.urlencode(params)}"
 
-    use_session = settings.AUTH_USE_SESSION
     # State is used to prevent CSRF, keep this for later.
-    if use_session:
-        request.session["oauth_state"] = state
-    raise RedirectResponse(authorization_url, headers=request.response.headers)
+    if settings.AUTH_SESSION_SECRET:
+        session = uuid4()
+        data = _SessionData(oauth_state=state)
+        await _backend.create(session, data)
+        _cookie.attach_to_response(response, session)
+
+    return RedirectResponse(authorization_url)
 
 
-async def _github_login_callback(request: Request, response: Response) -> dict[str, str]:
+async def _github_login_callback(
+    request: Request,
+    response: Response,
+    session_data: _SessionData = Depends(_verifier),
+) -> dict[str, str]:
     """
     Do the post login operation authentication on GitHub.
 
@@ -330,13 +417,12 @@ async def _github_login_callback(request: Request, response: Response) -> dict[s
     And ask the GitHub rest API the information related to the configured repository
     to know which kind of access the user have.
     """
-    use_session = settings.AUTH_USE_SESSION
-    stored_state = request.session.get("oauth_state") if use_session else None
+    stored_state = session_data.oauth_state if settings.AUTH_SESSION_SECRET else None
     received_state = request.query_params.get("state")
     code = request.query_params.get("code")
 
     # Verify state parameter to prevent CSRF attacks
-    if use_session and stored_state != received_state:
+    if settings.AUTH_SESSION_SECRET and stored_state != received_state:
         return {"error": "Invalid state parameter"}
 
     if request.query_params.get("error"):
@@ -482,11 +568,16 @@ if _auth_type in (AuthenticationType.SECRET, AuthenticationType.GITHUB):
 
 
 if _auth_type == AuthenticationType.GITHUB:
+    if not settings.AUTH_GITHUB_CLIENT_SECRET:
+        _LOG.warning(
+            "You are using GitHub authentication but the `AUTH_GITHUB_CLIENT_SECRET` is not set. "
+            "This will work, but for security reasons, it is recommended to set this value.",
+        )
 
     @router.get("/github/login")
-    async def c2c_github_login(request: Request) -> dict[str, str]:
+    async def c2c_github_login(request: Request, response: Response) -> dict[str, str]:
         """Initialize GitHub OAuth login flow."""
-        return _github_login(request)
+        return await _github_login(request, response)
 
     @router.get("/github/callback")
     async def c2c_github_callback(request: Request, response: Response) -> dict[str, str]:

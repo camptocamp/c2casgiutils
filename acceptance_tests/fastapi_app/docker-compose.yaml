@@ -8,3 +8,10 @@ services:
       - 8085:8080
     environment:
       - BACKEND_CORS_ORIGINS
+      - C2C_AUTH_GITHUB_CLIENT_ID=***
+      - C2C_AUTH_GITHUB_CLIENT_SECRET=***
+      - C2C_AUTH_GITHUB_SECRET=***
+      - C2C_AUTH_GITHUB_REPOSITORY=camptocamp/geomapfish
+      - C2C_AUTH_GITHUB_ACCESS_TYPE=admin
+      - C2C_AUTH_GITHUB_SCOPE=repo
+      - C2C_AUTH_GITHUB_PROXY_URL=https://geoservices-int.camptocamp.com/redirect

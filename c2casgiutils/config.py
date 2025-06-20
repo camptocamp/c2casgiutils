@@ -18,8 +18,9 @@ class Settings(BaseSettings, extra="ignore"):
     AUTH_GITHUB_SCOPE: str = "repo"
     AUTH_GITHUB_SECRET: str = ""
     AUTH_GITHUB_PROXY_URL: str = ""
-    AUTH_USE_SESSION: bool = False
-    AUTH_COOKIE_AGE = 7 * 24 * 3600
+    AUTH_SESSION_COOKIE: str = "c2c-session"
+    AUTH_SESSION_SECRET: str = ""
+    AUTH_COOKIE_AGE: int = 7 * 24 * 3600
 
     model_config = SettingsConfigDict(env_prefix="C2C_")
 

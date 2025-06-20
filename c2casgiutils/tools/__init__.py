@@ -28,6 +28,7 @@ _templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 async def c2c_index(request: Request) -> str:
     """Return the index.html tool file."""
     is_auth, user = await auth.is_auth_user(request)
+    print(f"User is authenticated: {is_auth}, User: {user}, Auth Type: {auth.auth_type()}")
 
     return cast(
         "str",
