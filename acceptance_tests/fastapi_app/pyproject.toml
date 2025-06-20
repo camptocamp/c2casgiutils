@@ -27,6 +27,7 @@ prospector-profile-duplicated = "1.10.5"
 prospector-profile-utils = "1.22.3"
 pytest = "8.3.5"
 c2cwsgiutils = { version = "6.1.7", extras = ["test_images"] }
+requests = "2.32.4"
 
 [tool.build-system]
 requires = [ "poetry-core",]
