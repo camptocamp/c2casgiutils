@@ -20,6 +20,7 @@ python = ">=3.10,<3.13"
 fastapi = {version = "0.115.12", extras = ["standard"]}
 pydantic-settings = {version = "2.9.1"}
 sentry-sdk = {version = "2.29.1", extras = ["fastapi"]}
+urllib3 = "2.5.0"
 
 [tool.poetry.group.dev.dependencies]
 prospector = { version = "1.15.3", extras = ["with_mypy", "with_bandit", "with_pyroma", "with_ruff"] }
