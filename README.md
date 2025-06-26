@@ -13,3 +13,7 @@ Stack that we consider that the project uses:
 - [Redis](https://redis.readthedocs.io/en/stable/examples/asyncio_examples.html)
 - [Prometheus FastAPI Instrumentator](https://github.com/trallnag/prometheus-fastapi-instrumentator)
 - [Sentry](https://docs.sentry.io/platforms/python/integrations/fastapi/)
+
+## Environment variables
+
+See: https://github.com/camptocamp/c2casgiutils/blob/master/c2casgiutils/config.py

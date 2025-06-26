@@ -8,3 +8,9 @@ services:
       - 8085:8080
     environment:
       - BACKEND_CORS_ORIGINS
+      - C2C__REDIS__URL=redis://redis:6379/0
+
+  redis:
+    image: bitnami/redis:7.0
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
