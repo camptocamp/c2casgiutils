@@ -2268,4 +2268,4 @@ fastapi = ["fastapi"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "0f3a096d0c7bdbab6e0689a1291d8f228dd78c6f460407026168b8069a08e6cd"
+content-hash = "131912236f359a031ebe0e2bd995a302b54cada71994f690d0e3fa80c0b2e36c"
