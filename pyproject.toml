@@ -6,40 +6,7 @@ line-length = 110
 convention = "numpy"
 
 [tool.poetry]
-name = "c2casgiutils"
 version = "0.0.0"
-description = "Common utilities for Camptocamp ASGI applications"
-readme = "README.md"
-authors = ["Camptocamp <info@camptocamp.com>"]
-keywords = ["sqlalchemy", "asgi", "fastapi"]
-repository = "https://github.com/camptocamp/c2casgiutils"
-license = "BSD-2-Clause"
-classifiers = [
-    'Development Status :: 5 - Production/Stable',
-    'Environment :: Plugins',
-    'Framework :: Pyramid',
-    'Intended Audience :: Developers',
-    'Intended Audience :: Information Technology',
-    'License :: OSI Approved :: BSD License',
-    'Operating System :: OS Independent',
-    'Programming Language :: Python',
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    'Programming Language :: Python :: 3.13',
-    'Topic :: Internet :: WWW/HTTP :: WSGI :: Application',
-    'Typing :: Typed',
-]
-packages = [{ include = "c2casgiutils" }]
-include = [
-  "c2casgiutils/py.typed",
-  "c2casgiutils/tools/static/*",
-  "c2casgiutils/tools/templates/*",
-]
-
-[tool.poetry.scripts]
-c2casgiutils-genversion = "c2casgiutils.scripts.genversion:main"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
@@ -81,6 +48,46 @@ format-jinja = """
 
 [tool.poetry-plugin-tweak-dependencies-version]
 default = "present"
+
+[project]
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Environment :: Plugins',
+    'Framework :: Pyramid',
+    'Intended Audience :: Developers',
+    'Intended Audience :: Information Technology',
+    'License :: OSI Approved :: BSD License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Topic :: Internet :: WWW/HTTP :: WSGI :: Application',
+    'Typing :: Typed',
+]
+dynamic = ["dependencies", "version"]
+name = "c2casgiutils"
+description = "Common utilities for Camptocamp ASGI applications"
+readme = "README.md"
+keywords = ["sqlalchemy", "asgi", "fastapi"]
+license = "BSD-2-Clause"
+authors = [{name = "Camptocamp",email = "info@camptocamp.com"}]
+packages = [{ include = "c2casgiutils" }]
+include = [
+  "c2casgiutils/py.typed",
+  "c2casgiutils/tools/static/*",
+  "c2casgiutils/tools/templates/*",
+]
+requires-python = ">=3.10"
+
+[project.urls]
+repository = "https://github.com/camptocamp/c2casgiutils"
+"Bug Tracker" = "https://github.com/camptocamp/c2casgiutils/issues"
+
+[project.scripts]
+c2casgiutils-genversion = "c2casgiutils.scripts.genversion:main"
 
 [build-system]
 requires = [
