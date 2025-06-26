@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=invalid-name
 
 # Copyright (c) 2025, Camptocamp SA
 # All rights reserved.
@@ -28,13 +29,15 @@
 # either expressed or implied, of the FreeBSD Project.
 
 
+import argparse
 import sys
 import time
-import argparse
+
 import requests
 
 
-if __name__ == "__main__":
+def _main() -> None:
+    """Wait for the URL to be reachable."""
     parser = argparse.ArgumentParser(description="Wait for the URL to be reachable")
     parser.add_argument("--sleep-time", help="The time to wait between each try", type=int, default=2)
     parser.add_argument("--max-sleep", help="The maximum time to wait", type=int, default=60)
@@ -47,9 +50,13 @@ if __name__ == "__main__":
             response = requests.get(args.url)
             if response.status_code == 200:
                 sys.exit(0)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print(str(e))
 
         time.sleep(args.sleep_time)
         sleep += args.sleep_time
     sys.exit(1)
+
+
+if __name__ == "__main__":
+    _main()
