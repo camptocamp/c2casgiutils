@@ -6,31 +6,36 @@ from c2cwsgiutils.acceptance import image
 
 
 @pytest.mark.parametrize(
-    ("expected_file_name", "width", "height", "headers", "media"),
+    ("port", "expected_file_name", "width", "height", "media"),
     [
-        pytest.param("c2c.expected.png", 650, 500, {}, [{"name": "prefers-color-scheme", "value": "dark"}]),
         pytest.param(
+            "8085",
+            "c2c.expected.png",
+            650,
+            500,
+            [{"name": "prefers-color-scheme", "value": "dark"}],
+        ),
+        pytest.param(
+            "8086",
             "c2c-auth.expected.png",
             650,
             1000,
-            {"X-API-Key": "changeme"},
             [{"name": "prefers-color-scheme", "value": "light"}],
         ),
         pytest.param(
+            "8086",
             "c2c-auth-dark.expected.png",
             650,
             1000,
-            {"X-API-Key": "changeme"},
             [
                 {"name": "prefers-color-scheme", "value": "dark"},
             ],
         ),
     ],
 )
-def test_screenshot(expected_file_name, width, height, headers, media):
+def test_screenshot(port: str, expected_file_name, width, height, media):
     image.check_screenshot(
-        "http://localhost:8085/c2c",
-        headers=headers,
+        f"http://localhost:{port}/c2c",
         media=media,
         width=width,
         height=height,
