@@ -24,6 +24,21 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
+  <style>
+    a {
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    a:hover[role='button'] {
+      text-decoration: none;
+    }
+    .form-control {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+
     <title>Camptocamp ASGI Utils tools</title>
   </head>
   <body>
@@ -43,7 +58,7 @@
       <h2>Authentication</h2>
       {% if auth_type == AuthenticationType.SECRET %}
       {% if not is_auth %}
-      <form action="{{ request.url_for('c2c_index') }}" method="post" target="_self">
+      <form action="{{ url_for('c2c_index') }}" method="post" target="_self">
         <input type="password" name="secret" placeholder="Secret" required />
         <button type="submit">Login</button>
       </form>
@@ -53,18 +68,47 @@
       {% elif auth_type == AuthenticationType.GITHUB %}
       {% if not is_auth %}
       <p>
-        <a href="{{ request.url_for('c2c_github_login') }}">Login with GitHub</a>
+        <a href="{{ url_for('c2c_github_login') }}">Login with GitHub</a>
       </p>
       {% else %}
       <p>
         Logged in as: <a href="{{ user['url'] }}">{{ user['name'] }}</a><br />
-        <a href="{{ request.url_for('c2c_github_logout') }}">Logout</a>
+        <a href="{{ url_for('c2c_github_logout') }}">Logout</a>
       </p>
       {% endif %}
       {% endif %}
       <hr>
       {% endif %}
 
+      {% if has_access %}
+      <h2>Headers
+      <admin-link
+        data="headers"
+        admin-class="btn btn-primary"
+        admin-href="{{ url_for('c2c_headers') }}"
+        admin-role="button"
+        >get</admin-link
+      ></h2>
+      <c2c-headers data="headers"></c2c-headers>
+
+      <h2>Logging</h2>
+      <c2c-logging-get data="logging-get" application-module="{{application_module}}" action="{{url_for('c2c_logging_level')}}"></c2c-logging-get>
+      <c2c-logging data="logging-get"></c2c-logging>
+      <hr>
+      <c2c-logging-set application-module="{{application_module}}" action="{{url_for('c2c_logging_level')}}"></c2c-logging-set>
+      <hr>
+      <admin-link
+        data="logging-overrides"
+        admin-class="btn btn-primary"
+        admin-href="{{ url_for('c2c_logging_overrides') }}"
+        admin-role="button"
+        >Get overrides</admin-link
+      ></h2>
+      <c2c-logging-overrides data="logging-overrides"></c2c-logging-overrides>
+
+      {% endif %}<!-- has_access -->
+
+      <script type="module" src="{{ url_for('c2c_static', path='/index.js') }}"></script>
     </div>
   </body>
 </html>
