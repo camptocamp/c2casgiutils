@@ -63,7 +63,8 @@ start_http_server(prometheus_port)
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    """Initialize broadcast functionality on startup."""
+    """Initialize application on startup."""
+    await tools.startup()
     await broadcast.setup_fastapi(app)
 
 
