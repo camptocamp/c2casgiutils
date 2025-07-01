@@ -5,11 +5,18 @@ repos:
       - id: prettier
         additional_dependencies:
           - prettier@3.5.2 # npm
+        exclude: |-
+          (?x)^(
+            c2casgiutils/tools/templates/index\.html
+          )$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: detect-private-key
-        exclude: ^app/tests/sources/test_git\.py$
+        exclude: |-
+          (?x)^(
+            app/tests/sources/test_git\.py
+          )$
       - id: check-merge-conflict
       - id: check-ast
       - id: debug-statements

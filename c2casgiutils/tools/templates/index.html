@@ -37,6 +37,34 @@
     </script>
     <div class="container-fluid">
       <h1>Camptocamp ASGI Utils tools</h1>
+
+      <!-- Authentication -->
+      {% if auth_type in (AuthenticationType.SECRET, AuthenticationType.GITHUB) %}
+      <h2>Authentication</h2>
+      {% if auth_type == AuthenticationType.SECRET %}
+      {% if not is_auth %}
+      <form action="{{ request.url_for('c2c_index') }}" method="post" target="_self">
+        <input type="password" name="secret" placeholder="Secret" required />
+        <button type="submit">Login</button>
+      </form>
+      {% else %}
+      <p>Authenticated with a secret.</p>
+      {% endif %}
+      {% elif auth_type == AuthenticationType.GITHUB %}
+      {% if not is_auth %}
+      <p>
+        <a href="{{ request.url_for('c2c_github_login') }}">Login with GitHub</a>
+      </p>
+      {% else %}
+      <p>
+        Logged in as: <a href="{{ user['url'] }}">{{ user['name'] }}</a><br />
+        <a href="{{ request.url_for('c2c_github_logout') }}">Logout</a>
+      </p>
+      {% endif %}
+      {% endif %}
+      <hr>
+      {% endif %}
+
     </div>
   </body>
 </html>
