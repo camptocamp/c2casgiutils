@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.routing import Router
 
-from c2casgiutils import auth, config
+from c2casgiutils import auth, config, health_checks
 from c2casgiutils.tools import headers
 from c2casgiutils.tools import logging_ as logging_tools
 
@@ -19,6 +19,7 @@ router = APIRouter()
 router.include_router(auth.router, prefix="/auth", tags=["c2c_auth"])
 router.include_router(headers.router, prefix="/headers", tags=["c2c_headers"])
 router.include_router(logging_tools.router, prefix="/logging", tags=["c2c_logging"])
+router.include_router(health_checks.router, prefix="/health", tags=["c2c_lhealth_checks"])
 
 static_router = Router()
 static_router.mount(
