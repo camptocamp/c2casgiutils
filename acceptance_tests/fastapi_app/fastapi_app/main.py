@@ -2,7 +2,7 @@ import logging
 import os
 
 import sentry_sdk
-from c2casgiutils import broadcast, tools
+from c2casgiutils import broadcast, health_checks, tools
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import start_http_server
@@ -41,6 +41,11 @@ class RootResponse(BaseModel):
     """Response of the root endpoint."""
 
     message: str
+
+
+# Add Health Checks
+health_checks.FACTORY.add(health_checks.Redis(tags=["liveness", "redis", "all"]))
+health_checks.FACTORY.add(health_checks.Wrong(tags=["wrong", "all"]))
 
 
 @app.get("/")
