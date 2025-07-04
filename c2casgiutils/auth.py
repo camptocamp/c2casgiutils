@@ -111,6 +111,15 @@ async def is_auth_user(request: Request, response: Response | None = None) -> tu
     Returns: boolean to indicated if the user is authenticated, and a dictionary with user details.
     """
     auth_type_ = auth_type()
+    if auth_type_ == AuthenticationType.TEST:
+        # For testing purposes, we can return a fake user
+        assert settings.auth.test.username is not None, "Test username must be set in settings"
+        return True, {
+            "login": "test",
+            "name": settings.auth.test.username,
+            "url": "https://example.com",
+            "token": "",
+        }
     if auth_type_ == AuthenticationType.NONE:
         return False, {}
     if auth_type_ == AuthenticationType.SECRET:
@@ -156,12 +165,17 @@ class AuthenticationType(Enum):
     SECRET = 1
     # Authentication on GitHub and by having an access on a repository
     GITHUB = 2
+    # Authentication used for testing purposes
+    TEST = 3
 
 
-def auth_type() -> AuthenticationType | None:
+def auth_type() -> AuthenticationType:
     """Get the authentication type."""
     if settings.auth.secret is not None:
         return AuthenticationType.SECRET
+
+    if settings.auth.test.username is not None:
+        return AuthenticationType.TEST
 
     has_client_id = settings.auth.github.client_id is not None
     has_client_secret = settings.auth.github.client_secret is not None

@@ -130,6 +130,34 @@ class Auth(BaseModel):
     ] = AuthTest()
 
 
+class SettingsToolsLogging(BaseModel):
+    """C2C Tools logging settings."""
+
+    redis_prefix: Annotated[
+        str,
+        Field(
+            description="Redis prefix for logging settings",
+        ),
+    ] = "c2c_logging_level_"
+    application_module: Annotated[
+        str,
+        Field(
+            description="Application module name for logging",
+        ),
+    ] = "c2casgiutils"
+
+
+class SettingsTools(BaseModel):
+    """C2C Tools settings."""
+
+    logging: Annotated[
+        SettingsToolsLogging,
+        Field(
+            description="Settings for logging tools",
+        ),
+    ] = SettingsToolsLogging()
+
+
 class Settings(BaseSettings, extra="ignore"):
     """Application settings."""
 
@@ -143,6 +171,10 @@ class Settings(BaseSettings, extra="ignore"):
         Auth,
         Field(description="Authentication settings"),
     ] = Auth()
+    tools: Annotated[
+        SettingsTools,
+        Field(description="Tools settings"),
+    ] = SettingsTools()
 
     model_config = SettingsConfigDict(env_prefix="C2C__", env_nested_delimiter="__")
 

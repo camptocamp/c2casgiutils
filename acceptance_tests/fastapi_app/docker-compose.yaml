@@ -2,8 +2,6 @@ services:
   app:
     build: .
     restart: unless-stopped
-    volumes:
-      - ./fast_api:/app
     ports:
       - 8085:8080
     environment:
@@ -21,12 +19,11 @@ services:
   app-auth:
     build: .
     restart: unless-stopped
-    volumes:
-      - ./fast_api:/app
     ports:
       - 8086:8080
     environment:
       - BACKEND_CORS_ORIGINS
+      - C2C__REDIS__URL=redis://redis:6379/0
       - C2C__AUTH__JWT__SECRET=***
       - C2C__AUTH__JWT__COOKIE__SECURE=False
       - C2C__AUTH__GITHUB__CLIENT_ID=***

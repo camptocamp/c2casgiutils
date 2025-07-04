@@ -45,10 +45,11 @@ RUN python3 -m pip install --upgrade setuptools
 WORKDIR /app
 
 COPY fastapi_app fastapi_app
-COPY pyproject.toml .
+COPY pyproject.toml logging.yaml ./
 
 RUN --mount=type=cache,target=/root/.cache \
     python3 -m pip install --disable-pip-version-check --no-deps .
 
-CMD ["uvicorn", "fastapi_app.main:app", "--host=0.0.0.0", "--port=8080"]
+CMD ["uvicorn", "fastapi_app.main:app", "--host=0.0.0.0", "--port=8080", "--log-config=/app/logging.yaml"]
+
 EXPOSE 8080

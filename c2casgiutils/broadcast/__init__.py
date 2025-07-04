@@ -1,10 +1,9 @@
 """Broadcast messages to all the processes of Gunicorn in every containers."""
 
-import functools
 import logging
 import os
-from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar
+from collections.abc import Awaitable, Callable, Coroutine
+from typing import Any, Literal, ParamSpec, TypeVar, overload
 
 from fastapi import FastAPI
 
@@ -105,28 +104,67 @@ async def broadcast(
     )
 
 
-# We can also templatize the argument with Python 3.10
-# See: https://www.python.org/dev/peps/pep-0612/
+_DecoratorArgs = ParamSpec("_DecoratorArgs")
 _DecoratorReturn = TypeVar("_DecoratorReturn")
 
 
+# For expect_answers=True
+@overload
 async def decorate(
-    func: Callable[..., Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    channel: str | None = None,
+    *,
+    expect_answers: Literal[True],
+    timeout: float = 10,
+) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[_DecoratorReturn]]]: ...
+
+
+# For expect_answers=False
+@overload
+async def decorate(
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    channel: str | None = None,
+    *,
+    expect_answers: Literal[False] = False,
+    timeout: float = 10,
+) -> Callable[_DecoratorArgs, Coroutine[Any, Any, None]]: ...
+
+
+# For no expect_answers parameter (defaults to False behavior)
+@overload
+async def decorate(
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    channel: str | None = None,
+    *,
+    timeout: float = 10,
+) -> Callable[_DecoratorArgs, Coroutine[Any, Any, None]]: ...
+
+
+async def decorate(
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
     channel: str | None = None,
     expect_answers: bool = False,
     timeout: float = 10,
-) -> Callable[..., Awaitable[list[_DecoratorReturn] | None]]:
+) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[_DecoratorReturn] | None]]:
     """
     Decorate function will be called through the broadcast functionality.
 
     If expect_answers is set to True, the returned value will be a list of all the answers.
     """
 
-    @functools.wraps(func)
-    async def wrapper(**kwargs: Any) -> list[_DecoratorReturn] | None:
-        return await broadcast(_channel, params=kwargs, expect_answers=expect_answers, timeout=timeout)
-
     _channel = f"c2c_decorated_{func.__module__}.{func.__name__}" if channel is None else channel
+
+    async def wrapper(
+        *args: _DecoratorArgs.args,
+        **kwargs: _DecoratorArgs.kwargs,
+    ) -> list[_DecoratorReturn] | None:
+        """Wrap the function to call the decorated function."""
+        assert not args, "Broadcast decorator should not be called with positional arguments"
+        if expect_answers:
+            return await broadcast(_channel, params=kwargs, expect_answers=True, timeout=timeout)
+        await broadcast(_channel, params=kwargs, expect_answers=False, timeout=timeout)
+        return None
+
     await subscribe(_channel, func)
 
     return wrapper
