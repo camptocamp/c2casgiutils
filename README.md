@@ -73,3 +73,14 @@ async def setup_broadcast_handlers() -> None:
 ```
 
 Then you can use the `echo_handler` function you will have the response of all the registered applications.
+
+## Health checks
+
+To initialize the health checks, you can use the following code in your application:
+
+```python
+from c2casgiutils import health_checks
+
+health_checks.FACTORY.add(health_checks.Redis(tags=["liveness", "redis", "all"]))
+health_checks.FACTORY.add(health_checks.Wrong(tags=["wrong", "all"]))
+```
