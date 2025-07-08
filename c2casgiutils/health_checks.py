@@ -4,10 +4,10 @@ import asyncio
 import logging
 import time
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import prometheus_client
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel, Field
 
 from c2casgiutils import config, redis_utils
@@ -115,7 +115,7 @@ class Factory:
         """
         self._items.append(item)
 
-    async def check(self, request: Request) -> GlobalResult:
+    async def check(self, name: str | None, tags: str | None) -> GlobalResult:
         """
         Run all the checks in the factory concurrently and return a GlobalResult.
 
@@ -147,13 +147,11 @@ class Factory:
             return result
 
         run_items = self._items
-        name_param = request.query_params.get("name")
-        if name_param:
-            run_items = [item for item in run_items if item.name == name_param]
-        tags_param = request.query_params.get("tags")
-        if tags_param:
-            tags = tags_param.split(",")
-            run_items = [item for item in run_items if any(tag in item.tags for tag in tags)]
+        if name:
+            run_items = [item for item in run_items if item.name == name]
+        if tags:
+            tags_split = tags.split(",")
+            run_items = [item for item in run_items if any(tag in item.tags for tag in tags_split)]
 
         # Run all checks concurrently
         if run_items:
@@ -177,14 +175,18 @@ FACTORY = Factory()
 
 
 @router.get("/")
-async def c2c_health_checks(request: Request, response: Response) -> GlobalResult:
+async def c2c_health_checks(
+    response: Response,
+    name: Annotated[str | None, Query(description="Name of the check to run")] = None,
+    tags: Annotated[str | None, Query(description="Comma-separated tags to filter checks")] = None,
+) -> GlobalResult:
     """
     Health check endpoint.
 
     This endpoint will run all checks in the factory and return a GlobalResult.
     It can be filtered by name or tags using query parameters.
     """
-    result = await FACTORY.check(request)
+    result = await FACTORY.check(name, tags)
     response.status_code = result.status_code
     return result
 

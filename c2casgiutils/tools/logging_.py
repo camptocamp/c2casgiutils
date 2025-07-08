@@ -2,7 +2,7 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import Annotated, Protocol
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, FastAPI, Query
 from pydantic import BaseModel
 
 from c2casgiutils import auth, broadcast, config, redis_utils
@@ -45,13 +45,10 @@ _set_level: _SetLevelFunction
 
 @router.get("/level")
 async def c2c_logging_level(
-    request: Request,
-    response: Response,
-    name: Annotated[str, Query()],
+    name: Annotated[str, Query(description="Name of the logger to get the level for")],
+    _: Annotated[None, Depends(auth.require_admin_access)],
 ) -> LevelResponse:
-    """Change the logging level."""
-    if not await auth.check_access(request, response):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    """Get the logging level."""
 
     logger = logging.getLogger(name)
     return LevelResponse(
@@ -68,13 +65,10 @@ class _SetLevel(BaseModel):
 
 @router.post("/level")
 async def c2c_logging_set_level(
-    request: Request,
-    response: Response,
     level: _SetLevel,
+    _: Annotated[None, Depends(auth.require_admin_access)],
 ) -> LevelResponse:
     """Change the logging level."""
-    if not await auth.check_access(request, response):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     logger = logging.getLogger(level.name)
     _LOGGER.info(
@@ -94,12 +88,9 @@ async def c2c_logging_set_level(
 
 @router.get("/overrides")
 async def c2c_logging_overrides(
-    request: Request,
-    response: Response,
+    _: Annotated[None, Depends(auth.require_admin_access)],
 ) -> OverridesResponse:
-    """Change the logging level."""
-    if not await auth.check_access(request, response):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    """Get the logging overrides."""
 
     return OverridesResponse(overrides=[e async for e in _list_overrides()])
 
@@ -126,12 +117,13 @@ async def _restore_overrides() -> None:
         _LOGGER.warning("Cannot restore logging levels", exc_info=True)
 
 
-@router.on_event("startup")
-async def _startup() -> None:
-    """Application startup."""
+async def startup(main_app: FastAPI) -> None:
+    """Initialize application on startup."""
+    del main_app  # Unused parameter
     global _set_level  # pylint: disable=global-statement
     _set_level = await broadcast.decorate(__set_level, expect_answers=True)
     await _restore_overrides()
+    _LOGGER.info("Logging levels restored from Redis")
 
 
 async def _store_override(name: str, level: str) -> None:

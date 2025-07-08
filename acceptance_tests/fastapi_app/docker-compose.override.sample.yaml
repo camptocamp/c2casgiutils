@@ -12,7 +12,7 @@ services:
       - --reload-include=c2casgiutils/**/*.py
 
     volumes:
-      - fastapi_app:/venv/lib/python3.12/site-packages/fastapi_app
+      - ./fastapi_app:/venv/lib/python3.12/site-packages/fastapi_app
       - ../../c2casgiutils:/venv/lib/python3.12/site-packages/c2casgiutils
 
     environment:
