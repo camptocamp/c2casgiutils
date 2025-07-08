@@ -1,3 +1,10 @@
+(() => {
+  'use strict';
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-bs-theme', 'dark');
+  }
+})();
+
 import 'https://cdn.jsdelivr.net/npm/@sbrunner/admin-components@0.7.0/dist/main.js';
 
 /**

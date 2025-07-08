@@ -9,6 +9,8 @@
       sizes="32x32"
       href="{{ url_for('c2c_static', path='/favicon-32x32.png') }}"
       referrerpolicy="no-referrer"
+      crossorigin="anonymous"
+      integrity="{{ integrity['favicon-32x32.png'] }}"
     />
     <link
       rel="icon"
@@ -16,6 +18,8 @@
       sizes="16x16"
       href="{{ url_for('c2c_static', path='/favicon-16x16.png') }}"
       referrerpolicy="no-referrer"
+      crossorigin="anonymous"
+      integrity="{{ integrity['favicon-16x16.png'] }}"
     />
     <link
       rel="stylesheet"
@@ -24,38 +28,16 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
-  <style>
-    a {
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    a:hover[role='button'] {
-      text-decoration: none;
-    }
-    .form-control {
-      margin-bottom: 0.5rem;
-    }
-    h2 {
-      margin-top: 1.5rem;
-    }
-    h3 {
-      margin-top: 1rem;
-    }
-  </style>
-
+    <link
+      rel="stylesheet"
+      href="{{ url_for('c2c_static', path='/index.css') }}"
+      integrity="{{ integrity['index.css'] }}"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <title>Camptocamp ASGI Utils tools</title>
   </head>
   <body>
-    <script>
-      (() => {
-        'use strict';
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          document.documentElement.setAttribute('data-bs-theme', 'dark');
-        }
-      })();
-    </script>
     <div class="container-fluid">
       <h1>Camptocamp ASGI Utils tools</h1>
 
@@ -117,7 +99,11 @@
       <c2c-health-check-form data="health-checks" action="{{url_for('c2c_health_checks')}}" dataOnError="true"></c2c-health-check-form>
       <c2c-health-check data="health-checks"></c2c-health-check>
 
-      <script type="module" src="{{ url_for('c2c_static', path='/index.js') }}"></script>
+      <script type="module" src="{{ url_for('c2c_static', path='/index.js') }}"
+        referrerpolicy="no-referrer"
+        crossorigin="anonymous"
+        integrity="{{ integrity['index.js'] }}"
+      ></script>
     </div>
   </body>
 </html>
