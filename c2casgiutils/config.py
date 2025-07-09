@@ -32,6 +32,17 @@ class Redis(BaseModel):
     db: Annotated[int, Field(description="Redis database number")] = 0
 
 
+class Prometheus(BaseModel):
+    """Prometheus configuration model."""
+
+    prefix: Annotated[
+        str,
+        Field(
+            description="Prefix for Prometheus metrics",
+        ),
+    ] = "c2casgiutils_"
+
+
 class AuthGitHub(BaseModel):
     """GitHub Authentication settings."""
 
@@ -167,6 +178,12 @@ class Settings(BaseSettings, extra="ignore"):
             description="Redis configuration settings",
         ),
     ] = Redis()
+    prometheus: Annotated[
+        Prometheus,
+        Field(
+            description="Prometheus configuration settings",
+        ),
+    ] = Prometheus()
     auth: Annotated[
         Auth,
         Field(description="Authentication settings"),

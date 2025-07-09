@@ -1,4 +1,4 @@
-import 'https://cdn.jsdelivr.net/npm/@sbrunner/admin-components@0.6.4/dist/main.js';
+import 'https://cdn.jsdelivr.net/npm/@sbrunner/admin-components@0.7.0/dist/main.js';
 
 /**
  * Display headers element.
@@ -142,3 +142,86 @@ class LogsOverrides extends window.admin.Element {
   }
 }
 window.customElements.define('c2c-logging-overrides', LogsOverrides);
+
+/**
+ * Display health check form.
+ */
+class HealthCheckForm extends window.admin.Form {
+  static properties = {
+    action: { type: String },
+  };
+  render() {
+    return window.lit.html`
+              <form action="${this.action}" @submit="${this.handleSubmit}" method="get">
+                <input type="text" class="form-control" name="name" placeholder="Check name"/>
+                <input type="text" class="form-control" name="tags" placeholder="Checks tags"/>
+                <button type="submit" class="btn btn-primary">
+                  <admin-status .state="${this.stateSignal}"></admin-status> Run checks
+                </button>
+              </form>
+            `;
+  }
+}
+window.customElements.define('c2c-health-check-form', HealthCheckForm);
+
+function formatValue(value) {
+  if (value < 10) {
+    return value.toFixed(1);
+  } else {
+    return value.toFixed(0);
+  }
+}
+function formatDuration(duration) {
+  if (duration < 0.000001) {
+    return `${formatValue(duration * 1000000000)}ns`;
+  } else if (duration < 0.001) {
+    return `${formatValue(duration * 1000000)}μs`;
+  } else if (duration < 1) {
+    return `${formatValue(duration * 1000)}ms`;
+  } else {
+    return `${formatValue(duration)}s`;
+  }
+}
+
+/**
+ * Display health check.
+ */
+class HealthCheck extends window.admin.Element {
+  render() {
+    if (!this.dataSignal) {
+      return window.lit.html``;
+    }
+    const data = this.dataSignal.get();
+    if (!data) {
+      return window.lit.html``;
+    }
+
+    const mainStyle = data.status_code < 400 ? 'color: green;' : 'color: red;';
+    const header = window.lit
+      .html`<h3>${data.name} <span style="${mainStyle}">Status: ${data.status_code}</span> - Time taken: ${formatDuration(data.time_taken)}</h3>`;
+
+    const checks = data.entities.map((check) => {
+      const style = check.status_code < 400 ? 'color: green;' : 'color: red;';
+
+      const head = window.lit
+        .html`<span style="${style}">Status: ${check.status_code}</span> - Time taken: ${formatDuration(check.time_taken)}`;
+      const tags = check.tags ? window.lit.html`<br>Tags: ${check.tags.join(', ')}` : '';
+      const payload =
+        check.payload && Object.keys(check.payload).length > 0
+          ? window.lit.html`<br>Payload: ${JSON.stringify(check.payload)}`
+          : '';
+      return window.lit.html`
+      <h4>${check.name}</h4>
+        <p>
+          ${head}
+          ${tags}
+          ${payload}
+        </p>
+      `;
+    });
+    return window.lit.html`
+      ${header}
+      ${checks}`;
+  }
+}
+window.customElements.define('c2c-health-check', HealthCheck);

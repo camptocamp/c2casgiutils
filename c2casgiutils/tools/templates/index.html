@@ -37,6 +37,12 @@
     .form-control {
       margin-bottom: 0.5rem;
     }
+    h2 {
+      margin-top: 1.5rem;
+    }
+    h3 {
+      margin-top: 1rem;
+    }
   </style>
 
     <title>Camptocamp ASGI Utils tools</title>
@@ -77,7 +83,6 @@
       </p>
       {% endif %}
       {% endif %}
-      <hr>
       {% endif %}
 
       {% if has_access %}
@@ -107,6 +112,10 @@
       <c2c-logging-overrides data="logging-overrides"></c2c-logging-overrides>
 
       {% endif %}<!-- has_access -->
+
+      <h2>Health checks</h2>
+      <c2c-health-check-form data="health-checks" action="{{url_for('c2c_health_checks')}}" dataOnError="true"></c2c-health-check-form>
+      <c2c-health-check data="health-checks"></c2c-health-check>
 
       <script type="module" src="{{ url_for('c2c_static', path='/index.js') }}"></script>
     </div>
