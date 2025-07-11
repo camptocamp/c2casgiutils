@@ -1,7 +1,7 @@
 import logging
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
 from c2casgiutils import auth
@@ -27,11 +27,8 @@ class HeadersResponse(BaseModel):
     client_info: HeadersClientInfoResponse
 
 
-async def _c2c_headers(request: Request, response: Response) -> HeadersResponse:
-    """Return the headers of the request."""
-
-    if not await auth.check_access(request, response):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+async def _c2c_headers(request: Request) -> HeadersResponse:
+    """Get the headers of the request."""
 
     headers = dict(request.headers)
     if "authorization" in headers:
@@ -51,28 +48,38 @@ async def _c2c_headers(request: Request, response: Response) -> HeadersResponse:
 
 
 @router.get("/")
-async def c2c_headers(request: Request, response: Response) -> HeadersResponse:
-    """Return the headers of the request."""
+async def c2c_headers(
+    request: Request,
+    _: Annotated[None, Depends(auth.require_admin_access)],
+) -> HeadersResponse:
+    """Get the headers of the request."""
 
-    return await _c2c_headers(request, response)
+    return await _c2c_headers(request)
 
 
 @router.get("/{path}")
-async def c2c_headers_path(request: Request, response: Response, path: str) -> HeadersResponse:
-    """Return the headers of the request."""
-    del path  # Unused path parameter, but required by FastAPI
+async def c2c_headers_path(
+    request: Request,
+    path: str,
+    param: Annotated[str | None, Query(description="An optional query parameter")] = None,
+    _: Annotated[None, Depends(auth.require_admin_access)] = None,
+) -> HeadersResponse:
+    """Get the headers of the request with one path."""
+    del path, param  # Unused path parameter, but required by FastAPI
 
-    return await _c2c_headers(request, response)
+    return await _c2c_headers(request)
 
 
 @router.get("/{path_1}/{path_2}")
 async def c2c_headers_path2(
     request: Request,
-    response: Response,
     path_1: str,
     path_2: str,
+    param_1: Annotated[str | None, Query(description="An optional query parameter")] = None,
+    param_2: Annotated[str | None, Query(description="A second optional query parameter")] = None,
+    _: Annotated[None, Depends(auth.require_admin_access)] = None,
 ) -> HeadersResponse:
-    """Return the headers of the request."""
-    del path_1, path_2  # Unused path parameters, but required by FastAPI
+    """Get the headers of the request with two path."""
+    del path_1, path_2, param_1, param_2  # Unused path parameters, but required by FastAPI
 
-    return await _c2c_headers(request, response)
+    return await _c2c_headers(request)

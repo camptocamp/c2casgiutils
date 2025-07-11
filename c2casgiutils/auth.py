@@ -30,13 +30,26 @@ class AuthConfig(TypedDict, total=False):
     github_access_type: str | None
 
 
-class UserDetails(TypedDict, total=False):
+ADMIN_AUTH_CONFIG = AuthConfig(
+    github_repository=settings.auth.github.repository,
+    github_access_type="admin",
+)
+
+
+class UserInfo(BaseModel):
     """Details about the user authenticated with GitHub."""
 
-    login: str
-    name: str
-    url: str
-    token: str
+    login: str = ""
+    display_name: str = ""
+    url: str = ""
+    token: str = ""
+
+
+class AuthInfo(BaseModel):
+    """Details about the authentication status and user information."""
+
+    is_logged_in: bool
+    user: UserInfo
 
 
 async def _is_auth_secret(
@@ -80,15 +93,18 @@ async def _is_auth_secret(
     return False
 
 
-async def _is_auth_user_github(request: Request) -> tuple[bool, UserDetails]:
+async def _is_auth_user_github(request: Request) -> AuthInfo:
     if settings.auth.test.username is not None:
         # For testing purposes, we can return a fake user
-        return True, {
-            "login": "test",
-            "name": settings.auth.test.username,
-            "url": "https://example.com",
-            "token": "",
-        }
+        return AuthInfo(
+            is_logged_in=True,
+            user=UserInfo(
+                login="test",
+                display_name=settings.auth.test.username,
+                url="https://example.com",
+                token="",  # nosec
+            ),
+        )
     try:
         user_payload = _get_jwt_cookie(
             request,
@@ -98,13 +114,10 @@ async def _is_auth_user_github(request: Request) -> tuple[bool, UserDetails]:
         raise HTTPException(401, "Expired session") from jwt_exception
     except jwt.InvalidTokenError as jwt_exception:
         raise HTTPException(401, "Invalid session") from jwt_exception
-    return user_payload is not None, cast(
-        "UserDetails",
-        user_payload,
-    )
+    return AuthInfo(is_logged_in=user_payload is not None, user=UserInfo(**(user_payload or {})))
 
 
-async def is_auth_user(request: Request, response: Response | None = None) -> tuple[bool, UserDetails]:
+async def get_auth(request: Request, response: Response) -> AuthInfo:
     """
     Check if the client is authenticated.
 
@@ -114,46 +127,39 @@ async def is_auth_user(request: Request, response: Response | None = None) -> tu
     if auth_type_ == AuthenticationType.TEST:
         # For testing purposes, we can return a fake user
         assert settings.auth.test.username is not None, "Test username must be set in settings"
-        return True, {
-            "login": "test",
-            "name": settings.auth.test.username,
-            "url": "https://example.com",
-            "token": "",
-        }
+        return AuthInfo(
+            is_logged_in=True,
+            user=UserInfo(
+                login="test",
+                display_name=settings.auth.test.username,
+                url="https://example.com",
+                token="",  # nosec
+            ),
+        )
     if auth_type_ == AuthenticationType.NONE:
-        return False, {}
+        return AuthInfo(is_logged_in=False, user=UserInfo())
     if auth_type_ == AuthenticationType.SECRET:
-        if response is None:
-            # If no response is provided, we can't set cookies
-            return False, {}
-        return await _is_auth_secret(request, response), {}
+        return AuthInfo(is_logged_in=await _is_auth_secret(request, response), user=UserInfo())
     if auth_type_ == AuthenticationType.GITHUB:
         return await _is_auth_user_github(request)
 
-    return False, {}
+    return AuthInfo(is_logged_in=False, user=UserInfo())
 
 
-async def is_auth(request: Request, response: Response | None = None) -> bool:
-    """Check if the client is authenticated."""
-    auth, _ = await is_auth_user(request, response)
-    return auth
-
-
-async def auth_required(request: Request, response: Response | None = None) -> bool:
+async def auth_required(auth_info: Annotated[AuthInfo, Depends(get_auth)]) -> None:
     """
     Check if the client is authenticated and raise an exception if not.
 
     Usage:
         @app.get("/protected")
-        async def protected_route(auth: Annotated[bool, Depends(auth_required)]):
+        async def protected_route(_: Annotated[bool, Depends(auth_required)]):
             return {"message": "You are authenticated"}
     """
-    if not await is_auth(request, response):
+    if not auth_info.is_logged_in:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Missing or invalid secret (parameter, X-API-Key header or cookie)",
         )
-    return True
 
 
 class AuthenticationType(Enum):
@@ -188,46 +194,44 @@ def auth_type() -> AuthenticationType:
 
 
 async def check_access(
-    request: Request,
-    response: Response | None = None,
-    repo: str | None = None,
-    access_type: str | None = None,
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    auth_config: AuthConfig,
 ) -> bool:
     """
     Check if the user has access to the resource.
 
     If the authentication type is not GitHub, this function is equivalent to is_auth.
-
-    Arguments:
-        request: is the request object.
-        response: optional response object to set cookies.
-        repo: is the repository to check access to (<organization>/<repository>).
-        access_type: is the type of access to check (admin|push|pull).
-
     """
-    if not await is_auth(request, response):
+    if not auth_info.is_logged_in:
+        return False
+
+    if await check_admin_access(auth_info):
+        return True
+
+    return await check_access_config(auth_info, auth_config)
+
+
+async def check_admin_access(auth_info: Annotated[AuthInfo, Depends(get_auth)]) -> bool:
+    """Check if the user has admin access to the resource."""
+    if not auth_info.is_logged_in:
         return False
 
     if auth_type() != AuthenticationType.GITHUB:
         return True
 
-    return await check_access_config(
-        request,
-        {
-            "github_repository": (settings.auth.github.repository if repo is None else repo),
-            "github_access_type": (settings.auth.github.access_type if access_type is None else access_type),
-        },
-    )
+    return await check_access_config(auth_info, ADMIN_AUTH_CONFIG)
 
 
-async def check_access_config(request: Request, auth_config: AuthConfig) -> bool:
+async def check_access_config(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    auth_config: AuthConfig,
+) -> bool:
     """Check if the user has access to the resource."""
-    auth, user = await is_auth_user(request)
-    if not auth:
+    if not auth_info.is_logged_in:
         return False
 
     repo_url = settings.auth.github.repo_url
-    token = user["token"]
+    token = auth_info.user.token
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
@@ -248,27 +252,41 @@ async def check_access_config(request: Request, auth_config: AuthConfig) -> bool
 
 
 async def require_access(
-    request: Request,
-    response: Response | None = None,
-    repo: str | None = None,
-    access_type: str | None = None,
-) -> bool:
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    auth_config: AuthConfig,
+) -> None:
     """
     FastAPI dependency that requires GitHub repository access.
 
     Usage:
-        @app.get("/admin")
-        async def admin_route(access: Annotated[bool, Depends(
-            lambda req, res: require_access(req, res, "org/repo", "admin")
+        @app.get("/protected")
+        async def protected_route(_: Annotated[bool, Depends(
+            lambda auth: require_access(auth_info, {"github_repository": "org/repo", "github_access_type": "admin"})
         )]):
-            return {"message": "You have admin access"}
+            return {"message": "You have access"}
     """
-    if not await check_access(request, response, repo, access_type):
+    if not await check_access(auth_info, auth_config):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have access to this resource",
         )
-    return True
+
+
+async def require_admin_access(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+) -> None:
+    """FastAPI dependency that requires admin access.
+
+    Usage:
+        @app.get("/admin_protected")
+        async def admin_protected_route(_: Annotated[bool, Depends(require_admin_access)]):
+            return {"message": "You have admin access"}
+    """
+    if not await check_admin_access(auth_info):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have admin access to this resource",
+        )
 
 
 def is_enabled() -> bool:
@@ -277,21 +295,6 @@ def is_enabled() -> bool:
 
 
 # Helper functions for FastAPI dependency injections
-
-
-async def auth_dependency(request: Request, response: Response | None = None) -> tuple[bool, UserDetails]:
-    """
-    Provide authentication information.
-
-    Usage:
-        @app.get("/")
-        async def root(auth_info: Annotated[tuple, Depends(auth_dependency)]):
-            is_authenticated, user_details = auth_info
-            if is_authenticated:
-                return {"message": f"Hello {user_details.get('name', 'User')}"}
-            return {"message": "Hello Anonymous"}
-    """
-    return await is_auth_user(request, response)
 
 
 def _set_jwt_cookie(
@@ -516,13 +519,13 @@ async def _github_login_callback(
                 return _ErrorResponse(error=f"Failed to get user info: {await response_user.text()}")
             user = await response_user.json()
 
-    user_information: UserDetails = {
-        "login": user["login"],
-        "name": user["name"],
-        "url": user["html_url"],
-        "token": token,
-    }
-    _set_jwt_cookie(request, response, payload=user_information)  # type: ignore[arg-type]
+    user_information = UserInfo(
+        login=user["login"],
+        display_name=user["name"],
+        url=user["html_url"],
+        token=token,
+    )
+    _set_jwt_cookie(request, response, payload=user_information.model_dump())
 
     # Redirect to success page or front page
     redirect_after_login = request.query_params.get("came_from", str(request.url_for("c2c_index")))
@@ -591,12 +594,9 @@ if _auth_type == AuthenticationType.SECRET:
 if _auth_type in (AuthenticationType.SECRET, AuthenticationType.GITHUB):
 
     @router.get("/status")
-    async def c2c_auth_status(request: Request, response: Response) -> dict[str, Any]:
+    async def c2c_auth_status(auth_info: Annotated[AuthInfo, Depends(get_auth)]) -> AuthInfo:
         """Get the authentication status."""
-        auth, user = await is_auth_user(request, response)
-        if auth:
-            return {"authenticated": True, "user": user}
-        return {"authenticated": False}
+        return auth_info
 
 
 if _auth_type == AuthenticationType.GITHUB:

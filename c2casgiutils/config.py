@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
@@ -5,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Redis(BaseModel):
-    """Redis configuration model."""
+    """Redis configuration."""
 
     url: Annotated[
         str | None,
@@ -33,7 +34,7 @@ class Redis(BaseModel):
 
 
 class Prometheus(BaseModel):
-    """Prometheus configuration model."""
+    """Prometheus configuration."""
 
     prefix: Annotated[
         str,
@@ -41,6 +42,51 @@ class Prometheus(BaseModel):
             description="Prefix for Prometheus metrics",
         ),
     ] = "c2casgiutils_"
+    port: Annotated[int, Field(description="Port for Prometheus metrics")] = 9000
+
+
+class Sentry(BaseModel):
+    """
+    Sentry configuration.
+
+    See also: https://docs.sentry.io/platforms/python/configuration/options/#core-options
+    """
+
+    dsn: Annotated[str | None, Field(description="Sentry DSN")] = None
+    debug: Annotated[bool, Field(description="Enable Sentry debug mode")] = False
+    release: Annotated[str | None, Field(description="Sentry release version")] = None
+    environment: Annotated[str, Field(description="Sentry environment")] = "production"
+    dist: Annotated[str | None, Field(description="Sentry distribution")] = None
+    sample_rate: Annotated[float, Field(description="Sample rate for error events")] = 1.0
+    ignore_errors: Annotated[list[str], Field(description="List of exception class names to ignore")] = []
+    max_breadcrumbs: Annotated[int, Field(description="Maximum number of breadcrumbs to capture")] = 100
+    attach_stacktrace: Annotated[bool, Field(description="Attach stack trace to all messages")] = False
+    send_default_pii: Annotated[bool | None, Field(description="Send default PII")] = None
+    event_scrubber: Annotated[str | None, Field(description="Event scrubber for sensitive information")] = (
+        None
+    )
+    include_source_context: Annotated[bool, Field(description="Include source context in events")] = True
+    include_local_variables: Annotated[bool, Field(description="Include local variables in events")] = True
+    add_full_stack: Annotated[bool, Field(description="Add full stack trace to events")] = False
+    max_stack_frames: Annotated[int, Field(description="Maximum number of stack frames to capture")] = 100
+    server_name: Annotated[str | None, Field(description="Server name for Sentry events")] = None
+    project_root: Annotated[str, Field(description="Root directory of the project")] = str(Path.cwd())
+    in_app_include: Annotated[
+        list[str],
+        Field(description="List of module prefixes that are in the app"),
+    ] = []
+    in_app_exclude: Annotated[
+        list[str],
+        Field(description="List of module prefixes that are not in the app"),
+    ] = []
+    max_request_body_size: Annotated[str, Field(description="Maximum request body size to capture")] = (
+        "medium"
+    )
+    max_value_length: Annotated[int, Field(description="Maximum length of values in event payloads")] = 1024
+    ca_certs: Annotated[str | None, Field(description="Path to alternative CA bundle file in PEM format")] = (
+        None
+    )
+    send_client_reports: Annotated[bool, Field(description="Send client reports to Sentry")] = True
 
 
 class AuthGitHub(BaseModel):
@@ -184,6 +230,12 @@ class Settings(BaseSettings, extra="ignore"):
             description="Prometheus configuration settings",
         ),
     ] = Prometheus()
+    sentry: Annotated[
+        Sentry,
+        Field(
+            description="Sentry configuration settings",
+        ),
+    ] = Sentry()
     auth: Annotated[
         Auth,
         Field(description="Authentication settings"),
