@@ -16,7 +16,7 @@ aiofile = "3.9.0"
 prometheus-client = "0.22.1"
 prometheus-fastapi-instrumentator = "7.1.0"
 redis = "6.2.0"
-aiohttp = "3.12.13"
+aiohttp = "3.12.14"
 pyjwt = "2.10.1"
 sqlalchemy = { version = "2.0.41", optional = true }
 alembic = { version = "1.16.2", optional = true }
