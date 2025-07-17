@@ -17,7 +17,7 @@ _BROADCAST_ENV_KEY = "C2C_BROADCAST_PREFIX"
 _broadcaster: interface.BaseBroadcaster | None = None
 
 
-async def setup_fastapi(app: FastAPI | None = None) -> None:
+async def startup(app: FastAPI | None = None) -> None:
     """
     Initialize the broadcaster with Redis, if configured. (FastAPI integration).
 

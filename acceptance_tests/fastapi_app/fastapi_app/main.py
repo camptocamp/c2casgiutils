@@ -1,31 +1,57 @@
 import logging
 import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
+import c2casgiutils
 import sentry_sdk
-from c2casgiutils import broadcast, health_checks, tools
+from c2casgiutils import config, headers, health_checks
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from prometheus_client import start_http_server
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
-from fastapi_app.api import router as api_router
+from fastapi_app import api
 
 _LOGGER = logging.getLogger(__name__)
 
-if "SENTRY_URL" in os.environ:
-    sentry_sdk.init(
-        dsn=os.environ["SENTRY_URL"],
-        # Add data like request headers and IP for users, if applicable;
-        # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-        send_default_pii=True,
-    )
+# Initialize Sentry if the URL is provided
+if config.settings.sentry.dsn or "SENTRY_DSN" in os.environ:
+    _LOGGER.info("Sentry is enabled with URL: %s", config.settings.sentry.dsn or os.environ.get("SENTRY_DSN"))
+    sentry_sdk.init(**config.settings.sentry.model_dump())
+
+
+@asynccontextmanager
+async def _lifespan(main_app: FastAPI) -> AsyncGenerator[None, None]:
+    """Handle application lifespan events."""
+
+    _LOGGER.info("Starting the application")
+    await c2casgiutils.startup(main_app)
+    await api.startup(main_app)
+
+    yield
+
 
 # Core Application Instance
-app = FastAPI(
-    title="fastapi_app",
-    openapi_url="/api/openapi.json",
+app = FastAPI(title="fastapi_app API", lifespan=_lifespan)
+
+
+# Add TrustedHostMiddleware (should be first)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"],  # Configure with specific hosts in production
 )
+
+# Add HTTPSRedirectMiddleware
+if os.environ.get("HTTP", "False").lower() not in ["true", "1"]:
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+# Add GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Set all CORS origins enabled
 app.add_middleware(
@@ -35,6 +61,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(headers.ArmorHeaderMiddleware)
 
 
 class RootResponse(BaseModel):
@@ -57,22 +85,11 @@ async def root() -> RootResponse:
 
 
 # Add Routers
-app.include_router(api_router, prefix="/api")
-app.include_router(tools.router, prefix="/c2c")
-app.mount("/c2c_static", tools.static_router)
+app.mount("/api", api.app)
+app.mount("/c2c", c2casgiutils.app)
 
-# Get Prometheus HTTP server port from environment variable with fallback to 9000
-prometheus_port = int(os.environ.get("PROMETHEUS_PORT", "9000"))
-start_http_server(prometheus_port)
+# Get Prometheus HTTP server port from environment variable 9000 by default
+start_http_server(config.settings.prometheus.port)
 
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize application on startup."""
-    await broadcast.setup_fastapi(app)
-
-
-instrumentator = Instrumentator(
-    should_instrument_requests_inprogress=True,
-)
+instrumentator = Instrumentator(should_instrument_requests_inprogress=True)
 instrumentator.instrument(app)
