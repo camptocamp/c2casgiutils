@@ -493,11 +493,10 @@ if _auth_type == AuthenticationType.GITHUB:
         came_from: Annotated[str | None, Depends(_validated_came_from)] = None,
     ) -> RedirectResponse:
         """Initialize GitHub OAuth login flow."""
-        base_callback_url = str(request.url_for("c2c_github_callback"))
         callback_url = (
-            f"{base_callback_url}?{urllib.parse.urlencode({'came_from': came_from})}"
+            request.url_for("c2c_github_callback", came_from=came_from)
             if came_from
-            else base_callback_url
+            else request.url_for("c2c_github_callback")
         )
 
         proxy_url = settings.auth.github.proxy_url
@@ -608,7 +607,7 @@ if _auth_type == AuthenticationType.GITHUB:
             response.status_code = status.HTTP_400_BAD_REQUEST
             return _ErrorResponse(error="Missing code parameter")
 
-        callback_url = str(request.url_for("c2c_github_callback"))
+        callback_url = request.url_for("c2c_github_callback")
         proxy_url = settings.auth.github.proxy_url
         if proxy_url is not None:
             url = (
@@ -664,7 +663,7 @@ if _auth_type == AuthenticationType.GITHUB:
         _set_jwt_cookie(request, response, payload=user_information.model_dump())
 
         # Redirect to success page or front page
-        redirect_after_login = came_from or str(request.url_for("c2c_index"))
+        redirect_after_login = came_from or request.url_for("c2c_index")
         redirect_response = RedirectResponse(redirect_after_login)
         for value in response.headers.getlist("Set-Cookie"):
             redirect_response.headers.append("Set-Cookie", value)
