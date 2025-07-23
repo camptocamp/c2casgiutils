@@ -46,8 +46,9 @@ app.add_middleware(
     allowed_hosts=["*"],  # Configure with specific hosts in production
 )
 
+http = os.environ.get("HTTP", "False").lower() in ["true", "1"]
 # Add HTTPSRedirectMiddleware
-if os.environ.get("HTTP", "False").lower() not in ["true", "1"]:
+if not http:
     app.add_middleware(HTTPSRedirectMiddleware)
 
 # Add GZipMiddleware
@@ -62,7 +63,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(headers.ArmorHeaderMiddleware)
+app.add_middleware(
+    headers.ArmorHeaderMiddleware,
+    headers_config={
+        "http": {"headers": {"Strict-Transport-Security": None} if http else {}},
+    },
+)
 
 
 class RootResponse(BaseModel):
