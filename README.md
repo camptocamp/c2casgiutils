@@ -18,6 +18,9 @@ Stack that we consider that the project uses:
 
 See: https://github.com/camptocamp/c2casgiutils/blob/master/c2casgiutils/config.py
 
+<!-- generated env. vars. start -->
+<!-- generated env. vars. end -->
+
 ## Installation
 
 ```bash
