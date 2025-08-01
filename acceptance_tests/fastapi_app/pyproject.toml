@@ -16,7 +16,7 @@ readme = "README.md"
 include = "fastapi_app"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.13,<3.14"
 fastapi = {version = "0.116.1", extras = ["standard"]}
 
 [tool.poetry.group.dev.dependencies]
