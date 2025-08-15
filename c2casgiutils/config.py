@@ -129,7 +129,7 @@ class AuthJWTCookie(BaseModel):
         Field(
             description="SameSite attribute for JWT cookie (default: strict)",
         ),
-    ] = "lax"
+    ] = "strict"
     secure: Annotated[
         bool,
         Field(

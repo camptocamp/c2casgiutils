@@ -21,6 +21,16 @@ prospector: poetry ## Run prospector
 pytest: ## Run the unit pytest
 	poetry run pytest test
 
+settings-doc: poetry ## Run settings-doc
+	poetry run settings-doc generate \
+		--class=c2casgiutils.config.Settings \
+		--output-format=markdown \
+		--update=README.md \
+		--between "<!-- generated env. vars. start -->" "<!-- generated env. vars. end -->" \
+		--heading-offset=2
+	sed --in-place --regexp "s#$(shell pwd)#<working_directory>#" README.md
+	pre-commit run --color=never --files=README.md || true
+
 acceptance_up: build ## Start the fastapi application for acceptance tests
 	(cd acceptance_tests/fastapi_app/ && docker compose build)
 	(cd acceptance_tests/fastapi_app/ && docker compose up -d)

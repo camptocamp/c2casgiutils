@@ -18,6 +18,332 @@ Stack that we consider that the project uses:
 
 See: https://github.com/camptocamp/c2casgiutils/blob/master/c2casgiutils/config.py
 
+<!-- generated env. vars. start -->
+
+### `C2C__REDIS__URL`
+
+_Optional_, default value: `None`
+
+Redis connection URL
+
+### `C2C__REDIS__OPTIONS`
+
+_Optional_, default value: `None`
+
+Redis connection options, e.g. 'socket_timeout=5,ssl=True'.
+
+### `C2C__REDIS__SENTINELS`
+
+_Optional_, default value: `None`
+
+Redis Sentinels
+
+### `C2C__REDIS__SERVICENAME`
+
+_Optional_, default value: `None`
+
+Redis service name for Sentinel
+
+### `C2C__REDIS__DB`
+
+_Optional_, default value: `0`
+
+Redis database number
+
+### `C2C__PROMETHEUS__PREFIX`
+
+_Optional_, default value: `c2casgiutils_`
+
+Prefix for Prometheus metrics
+
+### `C2C__PROMETHEUS__PORT`
+
+_Optional_, default value: `9000`
+
+Port for Prometheus metrics
+
+### `C2C__SENTRY__DSN`
+
+_Optional_, default value: `None`
+
+Sentry DSN
+
+### `C2C__SENTRY__DEBUG`
+
+_Optional_, default value: `False`
+
+Enable Sentry debug mode
+
+### `C2C__SENTRY__RELEASE`
+
+_Optional_, default value: `None`
+
+Sentry release version
+
+### `C2C__SENTRY__ENVIRONMENT`
+
+_Optional_, default value: `production`
+
+Sentry environment
+
+### `C2C__SENTRY__DIST`
+
+_Optional_, default value: `None`
+
+Sentry distribution
+
+### `C2C__SENTRY__SAMPLE_RATE`
+
+_Optional_, default value: `1.0`
+
+Sample rate for error events
+
+### `C2C__SENTRY__IGNORE_ERRORS`
+
+_Optional_, default value: `[]`
+
+List of exception class names to ignore
+
+### `C2C__SENTRY__MAX_BREADCRUMBS`
+
+_Optional_, default value: `100`
+
+Maximum number of breadcrumbs to capture
+
+### `C2C__SENTRY__ATTACH_STACKTRACE`
+
+_Optional_, default value: `False`
+
+Attach stack trace to all messages
+
+### `C2C__SENTRY__SEND_DEFAULT_PII`
+
+_Optional_, default value: `None`
+
+Send default PII
+
+### `C2C__SENTRY__EVENT_SCRUBBER`
+
+_Optional_, default value: `None`
+
+Event scrubber for sensitive information
+
+### `C2C__SENTRY__INCLUDE_SOURCE_CONTEXT`
+
+_Optional_, default value: `True`
+
+Include source context in events
+
+### `C2C__SENTRY__INCLUDE_LOCAL_VARIABLES`
+
+_Optional_, default value: `True`
+
+Include local variables in events
+
+### `C2C__SENTRY__ADD_FULL_STACK`
+
+_Optional_, default value: `False`
+
+Add full stack trace to events
+
+### `C2C__SENTRY__MAX_STACK_FRAMES`
+
+_Optional_, default value: `100`
+
+Maximum number of stack frames to capture
+
+### `C2C__SENTRY__SERVER_NAME`
+
+_Optional_, default value: `None`
+
+Server name for Sentry events
+
+### `C2C__SENTRY__PROJECT_ROOT`
+
+_Optional_, default value: `<working_directory>`
+
+Root directory of the project
+
+### `C2C__SENTRY__IN_APP_INCLUDE`
+
+_Optional_, default value: `[]`
+
+List of module prefixes that are in the app
+
+### `C2C__SENTRY__IN_APP_EXCLUDE`
+
+_Optional_, default value: `[]`
+
+List of module prefixes that are not in the app
+
+### `C2C__SENTRY__MAX_REQUEST_BODY_SIZE`
+
+_Optional_, default value: `medium`
+
+Maximum request body size to capture
+
+### `C2C__SENTRY__MAX_VALUE_LENGTH`
+
+_Optional_, default value: `1024`
+
+Maximum length of values in event payloads
+
+### `C2C__SENTRY__CA_CERTS`
+
+_Optional_, default value: `None`
+
+Path to alternative CA bundle file in PEM format
+
+### `C2C__SENTRY__SEND_CLIENT_REPORTS`
+
+_Optional_, default value: `True`
+
+Send client reports to Sentry
+
+### `C2C__AUTH__COOKIE_AGE`
+
+_Optional_, default value: `604800`
+
+Authentication cookie age in seconds (default: 7 days)
+
+### `C2C__AUTH__COOKIE`
+
+_Optional_, default value: `c2c-auth`
+
+Authentication cookie name
+
+### `C2C__AUTH__JWT__SECRET`
+
+_Optional_, default value: `None`
+
+JWT secret key
+
+### `C2C__AUTH__JWT__ALGORITHM`
+
+_Optional_, default value: `HS256`
+
+JWT algorithm (default: HS256)
+
+### `C2C__AUTH__JWT__COOKIE__SAME_SITE`
+
+_Optional_, default value: `strict`
+
+SameSite attribute for JWT cookie (default: strict)
+
+#### Possible values
+
+`lax`, `strict`, `none`
+
+### `C2C__AUTH__JWT__COOKIE__SECURE`
+
+_Optional_, default value: `True`
+
+Whether the JWT cookie should be secure (default: True)
+
+### `C2C__AUTH__JWT__COOKIE__PATH`
+
+_Optional_, default value: `None`
+
+Path for the JWT cookie (default: the path to the index page)
+
+### `C2C__AUTH__SECRET`
+
+_Optional_, default value: `None`
+
+Secret key for trivial authentication (not secure)
+
+### `C2C__AUTH__GITHUB__REPOSITORY`
+
+_Optional_, default value: `None`
+
+GitHub repository for authentication
+
+### `C2C__AUTH__GITHUB__ACCESS_TYPE`
+
+_Optional_, default value: `pull`
+
+GitHub access type
+
+### `C2C__AUTH__GITHUB__AUTHORIZE_URL`
+
+_Optional_, default value: `https://github.com/login/oauth/authorize`
+
+GitHub OAuth authorization URL
+
+### `C2C__AUTH__GITHUB__TOKEN_URL`
+
+_Optional_, default value: `https://github.com/login/oauth/access_token`
+
+GitHub OAuth token URL
+
+### `C2C__AUTH__GITHUB__USER_URL`
+
+_Optional_, default value: `https://api.github.com/user`
+
+GitHub user API URL
+
+### `C2C__AUTH__GITHUB__REPO_URL`
+
+_Optional_, default value: `https://api.github.com/repos`
+
+GitHub repository API URL
+
+### `C2C__AUTH__GITHUB__CLIENT_ID`
+
+_Optional_, default value: `None`
+
+GitHub OAuth client ID
+
+### `C2C__AUTH__GITHUB__CLIENT_SECRET`
+
+_Optional_, default value: `None`
+
+GitHub OAuth client secret
+
+### `C2C__AUTH__GITHUB__SCOPE`
+
+_Optional_, default value: `repo`
+
+GitHub OAuth scope
+
+### `C2C__AUTH__GITHUB__PROXY_URL`
+
+_Optional_, default value: `None`
+
+GitHub proxy URL
+
+### `C2C__AUTH__GITHUB__STATE_COOKIE`
+
+_Optional_, default value: `c2c-state`
+
+GitHub state cookie name
+
+### `C2C__AUTH__GITHUB__STATE_COOKIE_AGE`
+
+_Optional_, default value: `600`
+
+GitHub state cookie age in seconds (default: 10 minutes)
+
+### `C2C__AUTH__TEST__USERNAME`
+
+_Optional_, default value: `None`
+
+Test username
+
+### `C2C__TOOLS__LOGGING__REDIS_PREFIX`
+
+_Optional_, default value: `c2c_logging_level_`
+
+Redis prefix for logging settings
+
+### `C2C__TOOLS__LOGGING__APPLICATION_MODULE`
+
+_Optional_, default value: `c2casgiutils`
+
+Application module name for logging
+
+<!-- generated env. vars. end -->
+
 ## Installation
 
 ```bash
