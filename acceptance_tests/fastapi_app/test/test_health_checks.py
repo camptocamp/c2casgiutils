@@ -44,7 +44,7 @@ def test_health_checks_wrong(params: dict[str, str]) -> None:
     assert response_json["entities"][0]["name"] == "Wrong"
     assert response_json["entities"][0]["status_code"] == 500
     assert response_json["entities"][0]["payload"] == {
-        "error": "This is an always-failing check for testing purposes"
+        "error": "This is an always-failing check for testing purposes",
     }
 
 
