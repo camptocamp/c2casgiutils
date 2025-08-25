@@ -33,7 +33,7 @@ async def startup(app: FastAPI | None = None) -> None:
     """
     del app  # Not used, but kept for compatibility with FastAPI
 
-    global _broadcaster  # pylint: disable=global-statement
+    global _broadcaster  # noqa: PLW0603
     broadcast_prefix = os.environ.get(_BROADCAST_ENV_KEY, "broadcast_api_")
     master, slave, _ = redis_utils.get()
     if _broadcaster is None:
@@ -53,7 +53,7 @@ async def startup(app: FastAPI | None = None) -> None:
 
 
 def _get(need_init: bool = False) -> interface.BaseBroadcaster:
-    global _broadcaster  # pylint: disable=global-statement
+    global _broadcaster  # noqa: PLW0603
     if _broadcaster is None:
         if need_init:
             _LOG.error("Broadcast functionality used before it is setup")
@@ -63,7 +63,7 @@ def _get(need_init: bool = False) -> interface.BaseBroadcaster:
 
 def cleanup() -> None:
     """Cleanup the broadcaster to force to reinitialize it."""
-    global _broadcaster  # pylint: disable=global-statement
+    global _broadcaster  # noqa: PLW0603
     _broadcaster = None
 
 

@@ -18,7 +18,7 @@ _sentinel: redis.asyncio.sentinel.Sentinel | None = None
 
 def cleanup() -> None:
     """Cleanup the redis connections."""
-    global _master, _slave, _sentinel  # pylint: disable=global-statement
+    global _master, _slave, _sentinel  # noqa: PLW0603
     _master = None
     _slave = None
     _sentinel = None
@@ -36,7 +36,7 @@ def get() -> tuple[
 
 
 def _init() -> None:
-    global _master, _slave, _sentinel  # pylint: disable=global-statement
+    global _master, _slave, _sentinel  # noqa: PLW0603
     sentinels = settings.redis.sentinels
     url = settings.redis.url
     redis_options_ = settings.redis.options

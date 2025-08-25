@@ -48,7 +48,7 @@ class AsyncPubSubWorker:
                     _LOG.warning("Redis connection problem")
                 last_was_ok = False
                 await asyncio.sleep(0.5)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except Exception:  # noqa: BLE001
                 _LOG.warning("Unexpected error", exc_info=True)
         _LOG.info("Redis subscription worker stopped")
         pubsub.close()
@@ -104,7 +104,7 @@ class RedisBroadcaster(interface.BaseBroadcaster):
             data = json.loads(message["data"])
             try:
                 response = await callback(**data["params"])
-            except Exception as e:  # pragma: no cover  # pylint: disable=broad-exception-caught
+            except Exception as e:  # noqa: BLE001
                 _LOG.error("Failed handling a broadcast message", exc_info=True)
                 response = {"status": 500, "message": str(e)}
             answer_channel = data.get("answer_channel")
