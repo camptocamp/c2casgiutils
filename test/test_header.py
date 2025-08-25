@@ -115,7 +115,8 @@ def test_permissions_policy_format():
 def test_dict_with_invalid_value_type():
     """Test dict with unsupported value type raises TypeError."""
     with pytest.raises(
-        TypeError, match="Unsupported value type for header 'key': <class 'int'>. Expected str or list."
+        TypeError,
+        match="Unsupported value type for header 'key': <class 'int'>. Expected str or list.",
     ):
         _build_header({"key": 123})
 
@@ -123,7 +124,8 @@ def test_dict_with_invalid_value_type():
 def test_dict_with_nested_dict_value():
     """Test dict with nested dict value raises TypeError."""
     with pytest.raises(
-        TypeError, match="Unsupported value type for header 'key': <class 'dict'>. Expected str or list."
+        TypeError,
+        match="Unsupported value type for header 'key': <class 'dict'>. Expected str or list.",
     ):
         _build_header({"key": {"nested": "value"}})
 
@@ -131,7 +133,8 @@ def test_dict_with_nested_dict_value():
 def test_unsupported_type_int():
     """Test with unsupported type raises TypeError."""
     with pytest.raises(
-        TypeError, match="Unsupported header type: <class 'int'>. Expected str, list, or dict."
+        TypeError,
+        match="Unsupported header type: <class 'int'>. Expected str, list, or dict.",
     ):
         _build_header(123)
 
@@ -145,7 +148,8 @@ def test_none_value():
 def test_unsupported_type_tuple():
     """Test with tuple type raises TypeError."""
     with pytest.raises(
-        TypeError, match="Unsupported header type: <class 'tuple'>. Expected str, list, or dict."
+        TypeError,
+        match="Unsupported header type: <class 'tuple'>. Expected str, list, or dict.",
     ):
         _build_header(("item1", "item2"))
 
@@ -187,7 +191,8 @@ def test_init_default_config():
 
     # Check that headers are properly built
     default_config = next(
-        (config for config in middleware.headers_config if config.netloc_match is None), None
+        (config for config in middleware.headers_config if config.netloc_match is None),
+        None,
     )
     assert default_config is not None
     assert "Content-Security-Policy" in default_config.headers
@@ -207,7 +212,7 @@ def test_init_with_regex_patterns():
     """Test HeaderMiddleware initialization with regex patterns."""
     app = Starlette()
     custom_config = {
-        "api": {"netloc_match": r"^api\.", "path_match": r"^/v1/", "headers": {"X-API-Version": "1.0"}}
+        "api": {"netloc_match": r"^api\.", "path_match": r"^/v1/", "headers": {"X-API-Version": "1.0"}},
     }
     middleware = ArmorHeaderMiddleware(app, custom_config)
 
@@ -237,9 +242,9 @@ def test_init_header_processing_csp():
                 "Content-Security-Policy": {
                     "default-src": ["'self'"],
                     "script-src": ["'self'", "https://example.com"],
-                }
-            }
-        }
+                },
+            },
+        },
     }
     middleware = ArmorHeaderMiddleware(app, custom_config)
 

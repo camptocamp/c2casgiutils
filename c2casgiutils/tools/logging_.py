@@ -112,7 +112,7 @@ async def _restore_overrides() -> None:
             logging.getLogger(override.name).setLevel(override.level)
     except ImportError:
         pass  # don't have redis
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception:  # noqa: BLE001
         # survive an error there. Logging levels is not business critical...
         _LOGGER.warning("Cannot restore logging levels", exc_info=True)
 
@@ -120,7 +120,7 @@ async def _restore_overrides() -> None:
 async def startup(main_app: FastAPI) -> None:
     """Initialize application on startup."""
     del main_app  # Unused parameter
-    global _set_level  # pylint: disable=global-statement
+    global _set_level  # noqa: PLW0603
     _set_level = await broadcast.decorate(__set_level, expect_answers=True)
     await _restore_overrides()
     _LOGGER.info("Logging levels restored from Redis")

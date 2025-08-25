@@ -52,5 +52,5 @@ async def __echo_handler() -> dict[str, Any]:
 async def startup(main_app: FastAPI) -> None:
     """Initialize application on startup."""
     del main_app  # Unused parameter, but required
-    global _echo_handler  # pylint: disable=global-statement
+    global _echo_handler  # noqa: PLW0603
     _echo_handler = await broadcast.decorate(__echo_handler, expect_answers=True)
