@@ -1,3 +1,4 @@
+import re
 import urllib
 from unittest.mock import AsyncMock, MagicMock
 
@@ -116,7 +117,7 @@ def test_dict_with_invalid_value_type():
     """Test dict with unsupported value type raises TypeError."""
     with pytest.raises(
         TypeError,
-        match="Unsupported value type for header 'key': <class 'int'>. Expected str or list.",
+        match=re.escape("Unsupported value type for header 'key': <class 'int'>. Expected str or list."),
     ):
         _build_header({"key": 123})
 
@@ -125,7 +126,7 @@ def test_dict_with_nested_dict_value():
     """Test dict with nested dict value raises TypeError."""
     with pytest.raises(
         TypeError,
-        match="Unsupported value type for header 'key': <class 'dict'>. Expected str or list.",
+        match=re.escape("Unsupported value type for header 'key': <class 'dict'>. Expected str or list."),
     ):
         _build_header({"key": {"nested": "value"}})
 
@@ -134,7 +135,7 @@ def test_unsupported_type_int():
     """Test with unsupported type raises TypeError."""
     with pytest.raises(
         TypeError,
-        match="Unsupported header type: <class 'int'>. Expected str, list, or dict.",
+        match=re.escape("Unsupported header type: <class 'int'>. Expected str, list, or dict."),
     ):
         _build_header(123)
 
@@ -149,7 +150,7 @@ def test_unsupported_type_tuple():
     """Test with tuple type raises TypeError."""
     with pytest.raises(
         TypeError,
-        match="Unsupported header type: <class 'tuple'>. Expected str, list, or dict.",
+        match=re.escape("Unsupported header type: <class 'tuple'>. Expected str, list, or dict."),
     ):
         _build_header(("item1", "item2"))
 
