@@ -35,6 +35,6 @@ services:
       - HTTP=True
 
   redis:
-    image: redis:8.2.0
+    image: redis:8.2.1
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
