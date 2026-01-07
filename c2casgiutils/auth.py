@@ -440,10 +440,10 @@ if _auth_type == AuthenticationType.GITHUB:
             "This will work, but for security reasons, it is recommended to set this value.",
         )
 
-    def _validate_came_from(
+    def _validated_came_from(
         request: Request,
-        came_from: str | None,
-    ) -> None:
+        came_from: Annotated[str | None, Query()] = None,
+    ) -> str | None:
         """Validate the 'came_from' parameter."""
         if came_from:
             if "\\" in came_from:
@@ -451,22 +451,48 @@ if _auth_type == AuthenticationType.GITHUB:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid 'came_from' parameter: contains backslashes",
                 )
-            allowed_hosts = [request.url.hostname, "localhost"]
             came_from_parsed = urllib.parse.urlparse(came_from)
-            if came_from_parsed.netloc and came_from_parsed.netloc not in allowed_hosts:
+
+            if came_from_parsed.scheme and came_from_parsed.scheme not in ["http", "https"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid 'came_from' parameter: invalid scheme",
+                )
+
+            netloc = request.url.netloc
+            allowed_netlocs: list[str] = []
+            if netloc:
+                allowed_netlocs.append(netloc)
+            if came_from_parsed.netloc and came_from_parsed.netloc not in allowed_netlocs:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid 'came_from' parameter: not allowed host",
                 )
 
+            if not came_from_parsed.scheme or not came_from_parsed.netloc:
+                if came_from_parsed.scheme:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid 'came_from' parameter: scheme without netloc",
+                    )
+                if came_from_parsed.netloc:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid 'came_from' parameter: netloc without scheme",
+                    )
+                # Relative URL, make it absolute
+                base_url = str(request.base_url).rstrip("/")
+                came_from = urllib.parse.urljoin(base_url, came_from)
+
+        return came_from
+
     @router.get("/github/login")
     async def c2c_github_login(
         request: Request,
         response: Response,
-        came_from: Annotated[str | None, Query()] = None,
+        came_from: Annotated[str | None, Depends(_validated_came_from)] = None,
     ) -> RedirectResponse:
         """Initialize GitHub OAuth login flow."""
-        _validate_came_from(request, came_from)
         base_callback_url = str(request.url_for("c2c_github_callback"))
         callback_url = (
             f"{base_callback_url}?{urllib.parse.urlencode({'came_from': came_from})}"
@@ -533,7 +559,7 @@ if _auth_type == AuthenticationType.GITHUB:
     async def c2c_github_callback(
         request: Request,
         response: Response,
-        came_from: Annotated[str | None, Query()] = None,
+        came_from: Annotated[str | None, Depends(_validated_came_from)] = None,
         state: Annotated[str | None, Query()] = None,
         code: Annotated[str | None, Query()] = None,
         error: Annotated[str | None, Query()] = None,
@@ -564,13 +590,23 @@ if _auth_type == AuthenticationType.GITHUB:
         )
 
         # Verify state parameter to prevent CSRF attacks
+        if stored_state is None:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return _ErrorResponse(error="Missing stored state parameter")
+        if state is None:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return _ErrorResponse(error="Missing state parameter")
         if stored_state != state:
             response.status_code = status.HTTP_400_BAD_REQUEST
-            return _ErrorResponse(error="Invalid state parameter")
+            return _ErrorResponse(error="State parameter mismatch")
 
         if error:
             response.status_code = status.HTTP_400_BAD_REQUEST
             return _ErrorResponse(error=error)
+
+        if code is None:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return _ErrorResponse(error="Missing code parameter")
 
         callback_url = str(request.url_for("c2c_github_callback"))
         proxy_url = settings.auth.github.proxy_url
@@ -626,9 +662,6 @@ if _auth_type == AuthenticationType.GITHUB:
             token=token,
         )
         _set_jwt_cookie(request, response, payload=user_information.model_dump())
-
-        # Validate the came_from parameter
-        _validate_came_from(request, came_from)
 
         # Redirect to success page or front page
         redirect_after_login = came_from or str(request.url_for("c2c_index"))
