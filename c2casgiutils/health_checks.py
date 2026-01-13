@@ -213,7 +213,7 @@ class Redis(Check):
         if master == slave:
             if master is not None:
                 try:
-                    await master.ping()
+                    await master.ping()  # type: ignore[misc]
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     _LOGGER.exception("Redis ping failed")
                     payload["error"] = str(e)
@@ -221,14 +221,14 @@ class Redis(Check):
         else:
             if master is not None:
                 try:
-                    await master.ping()
+                    await master.ping()  # type: ignore[misc]
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     _LOGGER.exception("Redis master ping failed")
                     payload["master_error"] = str(e)
                     status_code = 500
             if slave is not None:
                 try:
-                    await slave.ping()
+                    await slave.ping()  # type: ignore[misc]
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     _LOGGER.exception("Redis slave ping failed")
                     payload["slave_error"] = str(e)
