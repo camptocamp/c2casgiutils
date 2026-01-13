@@ -1,10 +1,11 @@
 import pytest
+import pytest_asyncio
 
 from c2casgiutils import broadcast
 from c2casgiutils.broadcast import local
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def local_broadcaster():
     broadcast._broadcaster = local.LocalBroadcaster()  # pylint: disable=W0212
     try:
