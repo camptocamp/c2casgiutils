@@ -22,12 +22,12 @@ jobs:
       success: ${{ steps.success.outputs.success }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v6
       - run: python3 -m pip install --requirement=.github/requirements.txt
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -35,7 +35,7 @@ jobs:
       - run: pre-commit run --all-files --color=always
       - run: git diff --exit-code --patch > /tmp/pre-commit.patch; git diff --color; git reset --hard || true
         if: failure()
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Apply pre-commit fix.patch
           path: /tmp/pre-commit.patch
@@ -55,7 +55,7 @@ jobs:
       success: ${{ steps.success.outputs.success }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -71,7 +71,7 @@ jobs:
       - run: git diff --exit-code --color
       - run: git diff --patch > /tmp/settings-doc.patch; git reset --hard || true
         if: failure()
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Update settings documentation.patch
           path: /tmp/settings-doc.patch
@@ -96,7 +96,7 @@ jobs:
       - run: c2cciutils-docker-logs
         if: always()
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Acceptance-tests
           path: acceptance_tests/fastapi_app/results
@@ -121,7 +121,7 @@ jobs:
       - run: '[[ "${{ needs.pre-commit.outputs.success }}" == "true" ]]'
       - run: '[[ "${{ needs.test.outputs.success }}" == "true" ]]'
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -136,7 +136,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: git diff --exit-code --patch > /tmp/dpkg-versions.patch; git diff --color; git reset --hard || true
         if: failure()
-      - uses: actions/upload-artifact@v4.6.2
+      - uses: actions/upload-artifact@v6.0.0
         with:
           name: Update dpkg versions list.patch
           path: /tmp/dpkg-versions.patch
