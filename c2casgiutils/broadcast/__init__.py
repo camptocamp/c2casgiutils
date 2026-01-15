@@ -1,8 +1,9 @@
 """Broadcast messages to all the processes of Gunicorn in every containers."""
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable, Coroutine
-from typing import Any, Literal, ParamSpec, TypeVar, overload
+from typing import Any, Literal, ParamSpec, TypeVar, cast, overload
 
 from fastapi import FastAPI
 
@@ -109,7 +110,7 @@ _DecoratorReturn = TypeVar("_DecoratorReturn")
 # For expect_answers=True
 @overload
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     *,
     expect_answers: Literal[True],
@@ -120,7 +121,7 @@ async def decorate(
 # For expect_answers=False
 @overload
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     *,
     expect_answers: Literal[False] = False,
@@ -131,7 +132,7 @@ async def decorate(
 # For no expect_answers parameter (defaults to False behavior)
 @overload
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     *,
     timeout: float = 10,
@@ -139,7 +140,7 @@ async def decorate(
 
 
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     expect_answers: bool = False,
     timeout: float = 10,
@@ -163,6 +164,17 @@ async def decorate(
         await broadcast(_channel, params=kwargs, expect_answers=False, timeout=timeout)
         return None
 
-    await subscribe(_channel, func)
+    async def async_wrapper(
+        *args: _DecoratorArgs.args,
+        **kwargs: _DecoratorArgs.kwargs,
+    ) -> _DecoratorReturn:
+        """Wrap the function to await it if it is a coroutine."""
+        assert not args, "Broadcast decorator should not be called with positional arguments"
+        result = func(*args, **kwargs)
+        if asyncio.iscoroutine(result):
+            return await cast("Awaitable[_DecoratorReturn]", result)
+        return cast("_DecoratorReturn", result)
+
+    await subscribe(_channel, async_wrapper)
 
     return wrapper
