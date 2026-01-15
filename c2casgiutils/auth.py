@@ -381,14 +381,6 @@ class _ErrorResponse(BaseModel):
     error: str
 
 
-async def _github_logout(request: Request, response: Response) -> RedirectResponse:
-    """Logout the user."""
-    response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
-
-    redirect_url = request.query_params.get("came_from", str(request.url_for("c2c_index")))
-    return RedirectResponse(redirect_url)
-
-
 router = APIRouter()
 
 _auth_type = auth_type()
@@ -689,6 +681,13 @@ if _auth_type == AuthenticationType.GITHUB:
         return redirect_response
 
     @router.get("/github/logout")
-    async def c2c_github_logout(request: Request, response: Response) -> RedirectResponse:
+    async def c2c_github_logout(
+        request: Request,
+        response: Response,
+        came_from: Annotated[str | None, Depends(_validated_came_from)] = None,
+    ) -> RedirectResponse:
         """Logout from GitHub authentication."""
-        return await _github_logout(request, response)
+        response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
+
+        redirect_url = came_from or str(request.url_for("c2c_index"))
+        return RedirectResponse(redirect_url)
