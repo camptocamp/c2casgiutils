@@ -50,6 +50,12 @@ _Optional_, default value: `0`
 
 Redis database number
 
+### `C2C__REDIS__BROADCAST_PREFIX`
+
+_Optional_, default value: `broadcast_api_`
+
+Redis prefix for broadcast channels
+
 ### `C2C__PROMETHEUS__PREFIX`
 
 _Optional_, default value: `c2casgiutils_`
