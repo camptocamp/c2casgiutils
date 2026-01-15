@@ -14,7 +14,7 @@ services:
       - C2C__AUTH__GITHUB__ACCESS_TYPE=admin
       - C2C__AUTH__GITHUB__SCOPE=repo
       - C2C__AUTH__GITHUB__PROXY_URL=https://geoservices-int.camptocamp.com/redirect
-      - HTTP=True
+      - C2C__HTTP=True
 
   app-auth:
     build: .
@@ -32,7 +32,7 @@ services:
       - C2C__AUTH__GITHUB__SCOPE=repo
       - C2C__AUTH__GITHUB__PROXY_URL=https://geoservices-int.camptocamp.com/redirect
       - C2C__AUTH__TEST__USERNAME=TestUser
-      - HTTP=True
+      - C2C__HTTP=True
 
   redis:
     image: redis:8.4.0
