@@ -1,18 +1,17 @@
 """Broadcast messages to all the processes of Gunicorn in every containers."""
 
+import asyncio
 import logging
-import os
 from collections.abc import Awaitable, Callable, Coroutine
-from typing import Any, Literal, ParamSpec, TypeVar, overload
+from typing import Any, Literal, ParamSpec, TypeVar, cast, overload
 
 from fastapi import FastAPI
 
 import c2casgiutils.broadcast.redis
-from c2casgiutils import redis_utils
+from c2casgiutils import config, redis_utils
 from c2casgiutils.broadcast import interface, local
 
 _LOG = logging.getLogger(__name__)
-_BROADCAST_ENV_KEY = "C2C_BROADCAST_PREFIX"
 
 _broadcaster: interface.BaseBroadcaster | None = None
 
@@ -34,7 +33,7 @@ async def startup(app: FastAPI | None = None) -> None:
     del app  # Not used, but kept for compatibility with FastAPI
 
     global _broadcaster  # noqa: PLW0603
-    broadcast_prefix = os.environ.get(_BROADCAST_ENV_KEY, "broadcast_api_")
+    broadcast_prefix = config.settings.redis.broadcast_prefix
     master, slave, _ = redis_utils.get()
     if _broadcaster is None:
         if master is not None and slave is not None:
@@ -111,7 +110,7 @@ _DecoratorReturn = TypeVar("_DecoratorReturn")
 # For expect_answers=True
 @overload
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     *,
     expect_answers: Literal[True],
@@ -122,7 +121,7 @@ async def decorate(
 # For expect_answers=False
 @overload
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     *,
     expect_answers: Literal[False] = False,
@@ -133,7 +132,7 @@ async def decorate(
 # For no expect_answers parameter (defaults to False behavior)
 @overload
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     *,
     timeout: float = 10,
@@ -141,7 +140,7 @@ async def decorate(
 
 
 async def decorate(
-    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn]],
+    func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     expect_answers: bool = False,
     timeout: float = 10,
@@ -165,6 +164,17 @@ async def decorate(
         await broadcast(_channel, params=kwargs, expect_answers=False, timeout=timeout)
         return None
 
-    await subscribe(_channel, func)
+    async def async_wrapper(
+        *args: _DecoratorArgs.args,
+        **kwargs: _DecoratorArgs.kwargs,
+    ) -> _DecoratorReturn:
+        """Wrap the function to await it if it is a coroutine."""
+        assert not args, "Broadcast decorator should not be called with positional arguments"
+        result = func(*args, **kwargs)
+        if asyncio.iscoroutine(result):
+            return await cast("Awaitable[_DecoratorReturn]", result)
+        return cast("_DecoratorReturn", result)
+
+    await subscribe(_channel, async_wrapper)
 
     return wrapper
