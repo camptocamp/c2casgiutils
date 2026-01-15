@@ -424,6 +424,7 @@ To use the broadcasting you should do something like this:
 ```python
 
 import c2casgiutils
+from typing import Protocol
 
 
 class BroadcastResponse(BaseModel):
@@ -431,13 +432,16 @@ class BroadcastResponse(BaseModel):
 
     result: list[dict[str, Any]] | None = None
 
+class EchoHandlerProto(Protocol):
+    async def __call__(self, *, message: str) -> list[dict[str, Any]] | None: ...
 
-echo_handler: Callable[[], Awaitable[list[BroadcastResponse] | None]] = None  # type: ignore[assignment]
+
+echo_handler: EchoHandlerProto = None  # type: ignore[assignment]
 
 # Create a handler that will receive broadcasts
-async def echo_handler_() -> dict[str, Any]:
+async def _echo_handler(*, message: str) -> dict[str, Any]:
     """Echo handler for broadcast messages."""
-    return {"message": "Broadcast echo"}
+    return {"message": "Broadcast echo: " + message}
 
 # Subscribe the handler to a channel on module import
 @asynccontextmanager
@@ -449,7 +453,7 @@ async def _lifespan(main_app: FastAPI) -> None:
 
     # Register the echo handler
     global echo_handler  # pylint: disable=global-statement
-    echo_handler = await broadcast.decorate(echo_handler_, expect_answers=True)
+    echo_handler = await broadcast.decorate(_echo_handler, expect_answers=True)
 
     yield
 ```

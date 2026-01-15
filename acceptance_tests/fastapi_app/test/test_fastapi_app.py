@@ -72,4 +72,4 @@ def test_broadcast():
     for response_data in response_json["result"]:
         assert isinstance(response_data, dict)
         assert set(response_data.keys()) == {"message", "hostname", "pid"}
-        assert response_data["message"] == "Broadcast echo"
+        assert response_data["message"] == "Broadcast echo: coucou"
