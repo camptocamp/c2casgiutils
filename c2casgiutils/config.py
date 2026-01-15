@@ -31,6 +31,12 @@ class Redis(BaseModel):
         ),
     ] = None
     db: Annotated[int, Field(description="Redis database number")] = 0
+    broadcast_prefix: Annotated[
+        str,
+        Field(
+            description="Redis prefix for broadcast channels",
+        ),
+    ] = "broadcast_api_"
 
 
 class Prometheus(BaseModel):

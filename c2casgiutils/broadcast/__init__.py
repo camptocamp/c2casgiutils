@@ -1,18 +1,16 @@
 """Broadcast messages to all the processes of Gunicorn in every containers."""
 
 import logging
-import os
 from collections.abc import Awaitable, Callable, Coroutine
 from typing import Any, Literal, ParamSpec, TypeVar, overload
 
 from fastapi import FastAPI
 
 import c2casgiutils.broadcast.redis
-from c2casgiutils import redis_utils
+from c2casgiutils import config, redis_utils
 from c2casgiutils.broadcast import interface, local
 
 _LOG = logging.getLogger(__name__)
-_BROADCAST_ENV_KEY = "C2C_BROADCAST_PREFIX"
 
 _broadcaster: interface.BaseBroadcaster | None = None
 
@@ -34,7 +32,7 @@ async def startup(app: FastAPI | None = None) -> None:
     del app  # Not used, but kept for compatibility with FastAPI
 
     global _broadcaster  # noqa: PLW0603
-    broadcast_prefix = os.environ.get(_BROADCAST_ENV_KEY, "broadcast_api_")
+    broadcast_prefix = config.settings.redis.broadcast_prefix
     master, slave, _ = redis_utils.get()
     if _broadcaster is None:
         if master is not None and slave is not None:
