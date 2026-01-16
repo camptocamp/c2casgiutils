@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated, Any
 
+import starlette.datastructures
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
@@ -14,10 +15,12 @@ router = APIRouter()
 class HeadersClientInfoResponse(BaseModel):
     """Response of the root endpoint."""
 
-    url: str
-    base_url: str
+    url_str: str
+    url: dict[str, str | int | bool]
+    base_url_str: str
+    base_url: dict[str, str | int | bool]
     query_params: dict[str, str]
-    path_params: dict[str, Any]
+    path_params: dict[str, str]
 
 
 class HeadersResponse(BaseModel):
@@ -25,6 +28,15 @@ class HeadersResponse(BaseModel):
 
     headers: dict[str, str]
     client_info: HeadersClientInfoResponse
+
+
+def _process_url(url: starlette.datastructures.URL) -> dict[str, str | int | bool]:
+    attributes: dict[str, Any] = {
+        attribute: getattr(url, attribute) for attribute in dir(url) if not attribute.startswith("_")
+    }
+    return {
+        attribute: value for attribute, value in attributes.items() if isinstance(value, (str, int, bool))
+    }
 
 
 async def _c2c_headers(request: Request) -> HeadersResponse:
@@ -39,8 +51,10 @@ async def _c2c_headers(request: Request) -> HeadersResponse:
     return HeadersResponse(
         headers=headers,
         client_info=HeadersClientInfoResponse(
-            url=str(request.url),
-            base_url=str(request.base_url),
+            url_str=str(request.url),
+            url=_process_url(request.url),
+            base_url_str=str(request.base_url),
+            base_url=_process_url(request.base_url),
             query_params=dict(request.query_params),
             path_params=request.path_params,
         ),
