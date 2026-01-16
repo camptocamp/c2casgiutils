@@ -236,12 +236,14 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
 
         netloc = request.base_url.netloc
         path = request.url.path[len(request.base_url.path) :]
+        _LOGGER.debug("Processing headers for request netloc: '%s', path: '%s'.", netloc, path)
 
         for config in self.headers_config:
             if config.netloc_match and not config.netloc_match.match(netloc):
                 continue
             if config.path_match and not config.path_match.match(path):
                 continue
+
             if config.status_code is not None:
                 if isinstance(config.status_code, tuple):
                     if (
@@ -254,7 +256,7 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             if config.methods is not None and request.method not in config.methods:
                 continue
             _LOGGER.debug(
-                "Adding headers for %s on %s",
+                "Adding headers from '%s' on path '%s'.",
                 config.name,
                 request.url.path,
             )
