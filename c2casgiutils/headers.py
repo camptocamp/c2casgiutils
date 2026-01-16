@@ -95,7 +95,7 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
         },
     },
     "c2c": {  # Special case for c2c
-        "path_match": r"^c2c/?$",
+        "path_match": r"^(.*/)?c2c/?$",
         "headers": {
             "Content-Security-Policy": {
                 "default-src": ["'self'"],
