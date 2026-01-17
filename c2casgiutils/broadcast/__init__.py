@@ -135,7 +135,7 @@ def _deserialize_kwargs(kwargs: dict[str, Any], func: Callable[..., Any]) -> dic
     """Deserialize kwargs if their types are Pydantic models."""
     hints = get_type_hints(func)
 
-    result = {}
+    result: dict[str, Any] = {}
     for key, value in kwargs.items():
         if key in hints:
             param_type = hints[key]
@@ -218,6 +218,7 @@ async def decorate(
             return_type = hints.get("return")
             # Extract the actual return type from Awaitable[T]
             if hasattr(return_type, "__args__"):
+                assert return_type is not None
                 return_type = return_type.__args__[0]
             # Deserialize payloads in responses
             for response in responses:
