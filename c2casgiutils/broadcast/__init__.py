@@ -10,6 +10,7 @@ from fastapi import FastAPI
 import c2casgiutils.broadcast.redis
 from c2casgiutils import config, redis_utils
 from c2casgiutils.broadcast import interface, local
+from c2casgiutils.broadcast.types import BroadcastResponse
 
 _LOG = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ async def decorate(
     *,
     expect_answers: Literal[True],
     timeout: float = 10,
-) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[_DecoratorReturn]]]: ...
+) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[BroadcastResponse[_DecoratorReturn]]]]: ...
 
 
 # For expect_answers=False
@@ -144,7 +145,7 @@ async def decorate(
     channel: str | None = None,
     expect_answers: bool = False,
     timeout: float = 10,
-) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[_DecoratorReturn] | None]]:
+) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[BroadcastResponse[_DecoratorReturn]] | None]]:
     """
     Decorate function will be called through the broadcast functionality.
 
@@ -156,7 +157,7 @@ async def decorate(
     async def wrapper(
         *args: _DecoratorArgs.args,
         **kwargs: _DecoratorArgs.kwargs,
-    ) -> list[_DecoratorReturn] | None:
+    ) -> list[BroadcastResponse[_DecoratorReturn]] | None:
         """Wrap the function to call the decorated function."""
         assert not args, "Broadcast decorator should not be called with positional arguments"
         if expect_answers:

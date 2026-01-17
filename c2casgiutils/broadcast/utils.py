@@ -1,10 +1,16 @@
 import os
 import socket
-from typing import Any
+from typing import TypeVar
+
+from c2casgiutils.broadcast.types import BroadcastResponse
+
+_BroadcastResponse = TypeVar("_BroadcastResponse")
 
 
-def add_host_info(response: Any) -> Any:
+def add_host_info(response: _BroadcastResponse) -> BroadcastResponse[_BroadcastResponse]:
     """Add information related to the host."""
-    if isinstance(response, dict):
-        return {**response, "hostname": socket.gethostname(), "pid": os.getpid()}
-    return response
+    return BroadcastResponse(
+        hostname=socket.gethostname(),
+        pid=os.getpid(),
+        payload=response,
+    )
