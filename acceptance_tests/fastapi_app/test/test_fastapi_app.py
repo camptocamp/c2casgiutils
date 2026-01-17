@@ -66,10 +66,9 @@ def test_broadcast():
     response = requests.get("http://localhost:8085/api/broadcast")
     assert response.ok
     response_json = response.json()
-    assert "result" in response_json
-    assert isinstance(response_json["result"], list)
-    assert len(response_json["result"]) == 2
-    for response_data in response_json["result"]:
-        assert isinstance(response_data, dict)
-        assert set(response_data.keys()) == {"message", "hostname", "pid"}
-        assert response_data["message"] == "Broadcast echo: coucou"
+    assert response_json == {
+        "async_dict": ["Broadcast echo async dict: coucou"] * 2,
+        "async_pydantic": ["Broadcast echo async pydantic: coucou"] * 2,
+        "dict_": ["Broadcast echo dict: coucou"] * 2,
+        "pydantic": ["Broadcast echo pydantic: coucou"] * 2,
+    }
