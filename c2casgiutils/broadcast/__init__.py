@@ -3,13 +3,7 @@
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable, Coroutine
-<<<<<<< HEAD
-from typing import Any, Literal, ParamSpec, TypeVar, cast, overload
-||||||| parent of 07f4c5d (Be able to broadcast Pydentic models)
-from typing import Any, Literal, ParamSpec, TypeVar, overload
-=======
-from typing import Any, Literal, ParamSpec, TypeVar, get_type_hints, overload
->>>>>>> 07f4c5d (Be able to broadcast Pydentic models)
+from typing import Any, Literal, ParamSpec, TypeVar, cast, get_type_hints, overload
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -131,34 +125,24 @@ def _deserialize_payload(payload: Any, return_type: Any) -> Any:
     if return_type is None or not isinstance(return_type, type):
         return payload
 
-    try:
-        if isinstance(payload, dict) and issubclass(return_type, BaseModel):
-            return return_type.model_validate(payload)
-    except TypeError:
-        # issubclass() raised TypeError, return_type is not a class
-        pass
+    if isinstance(payload, dict) and issubclass(return_type, BaseModel):
+        return return_type.model_validate(payload)
 
     return payload
 
 
 def _deserialize_kwargs(kwargs: dict[str, Any], func: Callable[..., Any]) -> dict[str, Any]:
     """Deserialize kwargs if their types are Pydantic models."""
-    try:
-        hints = get_type_hints(func)
-    except Exception:
-        return kwargs
+    hints = get_type_hints(func)
 
     result = {}
     for key, value in kwargs.items():
         if key in hints:
             param_type = hints[key]
             if isinstance(value, dict) and isinstance(param_type, type):
-                try:
-                    if issubclass(param_type, BaseModel):
-                        result[key] = param_type.model_validate(value)
-                    else:
-                        result[key] = value
-                except TypeError:
+                if issubclass(param_type, BaseModel):
+                    result[key] = param_type.model_validate(value)
+                else:
                     result[key] = value
             else:
                 result[key] = value
@@ -230,14 +214,11 @@ async def decorate(
                 return None
             # Get the return type from the decorated function
             return_type = None
-            try:
-                hints = get_type_hints(func)
-                return_type = hints.get("return")
-                # Extract the actual return type from Awaitable[T]
-                if hasattr(return_type, "__args__"):
-                    return_type = return_type.__args__[0]
-            except Exception:
-                _LOG.exception("Failed to get return type hints for decorated function")
+            hints = get_type_hints(func)
+            return_type = hints.get("return")
+            # Extract the actual return type from Awaitable[T]
+            if hasattr(return_type, "__args__"):
+                return_type = return_type.__args__[0]
             # Deserialize payloads in responses
             for response in responses:
                 if isinstance(response, dict) and "payload" in response:
