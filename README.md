@@ -435,24 +435,27 @@ To use the broadcasting you should do something like this:
 ```python
 
 import c2casgiutils
+from c2casgiutils.broadcast import MissingAnswer
+from c2casgiutils.broadcast import types as broadcast_types
 from typing import Protocol
 
 
-class BroadcastResponse(BaseModel):
+class EchoResponse(BaseModel):
     """Response from broadcast endpoint."""
 
     result: list[dict[str, Any]] | None = None
 
 class EchoHandlerProto(Protocol):
-    async def __call__(self, *, message: str) -> list[dict[str, Any]] | None: ...
+    async def __call__(self, *, message: str) -> list[broadcast_types.BroadcastResponse[EchoResponse]|MissingAnswer] | None: ...
 
 
+# Late assignment
 echo_handler: EchoHandlerProto = None  # type: ignore[assignment]
 
 # Create a handler that will receive broadcasts
-async def _echo_handler(*, message: str) -> dict[str, Any]:
+async def _echo_handler(*, message: str) -> EchoResponse:
     """Echo handler for broadcast messages."""
-    return {"message": "Broadcast echo: " + message}
+    return EchoResponse(message="Broadcast echo: " + message)
 
 # Subscribe the handler to a channel on module import
 @asynccontextmanager
