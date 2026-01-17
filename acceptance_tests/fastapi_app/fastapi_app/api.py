@@ -47,6 +47,7 @@ async def send_broadcast() -> BroadcastResponse:
 
 
 # Create a handler that will receive broadcasts
+# TODO: use pydentic models
 async def __echo_handler(*, message: str) -> dict[str, Any]:
     """Echo handler for broadcast messages."""
     return {"message": "Broadcast echo: " + message}
