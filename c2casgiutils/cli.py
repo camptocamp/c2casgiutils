@@ -33,6 +33,12 @@ async def init(args: argparse.Namespace) -> None:
             async with aiofiles.open(args.logging_config) as logging_file:
                 logging_config = yaml.safe_load(await logging_file.read())
                 logging.config.dictConfig(logging_config)
+        except FileNotFoundError:
+            _LOGGER.exception("Logging configuration file not found: '%s'", args.logging_config)
+        except PermissionError:
+            _LOGGER.exception("Permission denied when reading logging configuration file: '%s'", args.logging_config)
+        except OSError:
+            _LOGGER.exception("Failed to read logging configuration file '%s'", args.logging_config)
         except yaml.YAMLError:
             _LOGGER.exception("Failed to parse logging configuration file '%s'", args.logging_config)
 
