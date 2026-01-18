@@ -8,7 +8,7 @@ import yaml
 
 import c2casgiutils.config
 from c2casgiutils import broadcast
-from c2casgiutils.tools import logging
+from c2casgiutils.tools import logging_ as logging_tools
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,4 +41,4 @@ async def init(args: argparse.Namespace) -> None:
 
     await broadcast.startup()
     # If the command line application has also a FastAPI app, this will allow changing the logging levels from the FastAPI application
-    await logging.startup()
+    await logging_tools.startup()
