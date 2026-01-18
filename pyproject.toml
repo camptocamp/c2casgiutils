@@ -40,7 +40,9 @@ sentry-sdk = {version = "2.51.0", extras = ["fastapi"], optional = true}
 fastapi = ["fastapi"]
 sqlalchemy = ["sqlalchemy"]
 alembic = ["alembic", "sqlalchemy"]
-all = ["fastapi", "sqlalchemy", "alembic"]
+prometheus = ["prometheus-fastapi-instrumentator"]
+sentry = ["sentry-sdk"]
+all = ["fastapi", "sqlalchemy", "alembic", "prometheus-fastapi-instrumentator", "sentry-sdk"]
 
 [tool.poetry.group.dev.dependencies]
 prospector = { version = "1.18.0", extras = ["with_bandit", "with_mypy", "with_pyroma", "with_ruff"] }

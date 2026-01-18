@@ -759,3 +759,40 @@ if config.settings.sentry.dsn or 'SENTRY_DSN' in os.environ:
 ```
 
 Sentry will automatically capture exceptions and errors in your FastAPI application. For more advanced usage, refer to the [Sentry Python SDK documentation](https://docs.sentry.io/platforms/python/) and [FastAPI integration guide](https://docs.sentry.io/platforms/python/integrations/fastapi/).
+
+## Command-line Interface
+
+The package includes some helpers to initialize applications from the command line. See the `cli.py` module for more details.
+
+```python
+from c2casgiutils import cli
+import asyncio
+from argparse import ArgumentParser
+
+async def main_() -> None:
+    """Main entry point for CLI."""
+
+    parser = ArgumentParser(description="My Application CLI")
+    cli.add_arguments(parser)
+    args = parser.parse_args()
+    await cli.init(args)
+
+    # Initialize Sentry if the URL is provided
+    if config.settings.sentry.dsn or "SENTRY_DSN" in os.environ:
+        _LOGGER.info("Sentry is enabled with URL: %s", config.settings.sentry.dsn or os.environ.get("SENTRY_DSN"))
+        sentry_sdk.init(**config.settings.sentry.model_dump())
+
+    if c2casgiutils.config.settings.prometheus.port is not None:
+        prometheus_client.start_http_server(c2casgiutils.config.settings.prometheus.port)
+
+
+
+
+# This method is required for console_scripts entry point
+def main() -> None:
+    """Main entry point for CLI."""
+    asyncio.run(main_())
+
+if __name__ == "__main__":
+    main()
+```

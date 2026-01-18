@@ -117,7 +117,7 @@ async def _restore_overrides() -> None:
         _LOGGER.warning("Cannot restore logging levels", exc_info=True)
 
 
-async def startup(main_app: FastAPI) -> None:
+async def startup(main_app: FastAPI | None = None) -> None:
     """Initialize application on startup."""
     del main_app  # Unused parameter
     global _set_level  # noqa: PLW0603
