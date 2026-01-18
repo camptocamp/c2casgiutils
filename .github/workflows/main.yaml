@@ -49,7 +49,7 @@ jobs:
     name: Continuous integration
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    if: "!startsWith(github.event.head_commit.message, '[skip ci] ')"
+    if: "!startsWith(github.event.head_commit.message | '', '[skip ci] ')"
 
     outputs:
       success: ${{ steps.success.outputs.success }}
