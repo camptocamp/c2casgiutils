@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 import yaml
 
 from c2casgiutils import cli
@@ -221,10 +220,8 @@ async def test_init_broadcast_integration():
     """Test init properly integrates with broadcast module."""
     args = argparse.Namespace(logging_config=None)
     
-    mock_broadcast_startup = AsyncMock()
-    
     with patch("c2casgiutils.config.settings") as mock_settings, \
-         patch("c2casgiutils.broadcast.startup", mock_broadcast_startup), \
+         patch("c2casgiutils.broadcast.startup", new_callable=AsyncMock) as mock_broadcast_startup, \
          patch("c2casgiutils.cli.logging_tools.startup") as mock_logging_startup:
         
         mock_settings.prometheus.port = None
@@ -240,11 +237,9 @@ async def test_init_logging_integration():
     """Test init properly integrates with logging module."""
     args = argparse.Namespace(logging_config=None)
     
-    mock_logging_startup = AsyncMock()
-    
     with patch("c2casgiutils.config.settings") as mock_settings, \
          patch("c2casgiutils.broadcast.startup") as mock_broadcast_startup, \
-         patch("c2casgiutils.cli.logging_tools.startup", mock_logging_startup):
+         patch("c2casgiutils.cli.logging_tools.startup", new_callable=AsyncMock) as mock_logging_startup:
         
         mock_settings.prometheus.port = None
         
