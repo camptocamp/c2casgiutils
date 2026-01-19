@@ -306,7 +306,11 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             used_config.append(config)
             if nonce is None:
                 for header in (HEADER_CONTENT_SECURITY_POLICY, HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY):
-                    if config.headers.get(header) and CSP_NONCE in config.headers[header]:
+                    if (
+                        header in config.headers
+                        and config.headers[header] is not None
+                        and CSP_NONCE in config.headers[header]
+                    ):
                         # Generate a new nonce
                         nonce = base64.b64encode(os.urandom(16)).decode("utf-8")
                         request.state.nonce = nonce
