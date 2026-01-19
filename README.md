@@ -200,6 +200,12 @@ _Optional_, default value: `True`
 
 Send client reports to Sentry
 
+### `C2C__SENTRY__TAGS`
+
+_Optional_, default value: `{}`
+
+Default tags for Sentry events, loaded from environment variables with prefix C2C**SENTRY**TAG\_\_
+
 ### `C2C__AUTH__COOKIE_AGE`
 
 _Optional_, default value: `604800`
