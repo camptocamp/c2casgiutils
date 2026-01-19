@@ -1,3 +1,4 @@
+import binascii
 import re
 import urllib
 from unittest.mock import AsyncMock, MagicMock
@@ -839,10 +840,6 @@ async def test_dispatch_nonce_base64_encoding(mock_request):
     }
     middleware = ArmorHeaderMiddleware(simple_app, custom_config)
 
-    request = MagicMock(spec=Request)
-    request.base_url = urllib.parse.urlparse("http://example.com/")
-    request.url = urllib.parse.urlparse("http://example.com/path")
-
     mock_response = Response("Hello World")
     call_next = AsyncMock(return_value=mock_response)
 
@@ -854,7 +851,7 @@ async def test_dispatch_nonce_base64_encoding(mock_request):
     try:
         base64.b64decode(nonce)
         valid_base64 = True
-    except (ValueError, base64.binascii.Error):
+    except (ValueError, binascii.Error):
         valid_base64 = False
 
     assert valid_base64, "Nonce should be valid base64"
