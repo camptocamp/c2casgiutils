@@ -1,4 +1,6 @@
+import base64
 import logging
+import os
 import re
 from collections.abc import Awaitable, Callable, Collection
 from typing import TypedDict
@@ -162,7 +164,10 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
                     "https://cdn.jsdelivr.net/npm/@sbrunner/",
                 ],
                 CSP_SCRIPT_SRC_ATTR: [CSP_UNSAFE_INLINE],
-                CSP_STYLE_SRC_ELEM: [],
+                CSP_STYLE_SRC_ELEM: [
+                    CSP_SELF,
+                    "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/",
+                ],
                 CSP_STYLE_SRC_ATTR: [CSP_UNSAFE_INLINE],
             },
         },
@@ -286,16 +291,34 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         """Dispatch the request and add headers to the response."""
-        response = await call_next(request)
-
         netloc = request.base_url.netloc
         path = request.url.path[len(request.base_url.path) :]
 
+        used_config = []
+        nonce: str | None = None
         for config in self.headers_config:
             if config.netloc_match and not config.netloc_match.match(netloc):
                 continue
             if config.path_match and not config.path_match.match(path):
                 continue
+            if config.methods is not None and request.method not in config.methods:
+                continue
+            used_config.append(config)
+            for header, value in config.headers.items():
+                if (
+                    header in (HEADER_CONTENT_SECURITY_POLICY, HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY)
+                    and CSP_NONCE in value
+                ):
+                    # Generate a new nonce
+                    nonce = base64.b64encode(os.urandom(16)).decode("utf-8")
+                    request.state.nonce = nonce
+                    break
+            if nonce is not None:
+                break  # Nonce is unique, no need to check further configs
+
+        response = await call_next(request)
+
+        for config in used_config:
             if config.status_code is not None:
                 if isinstance(config.status_code, tuple):
                     if (
@@ -305,8 +328,6 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
                         continue
                 elif response.status_code != config.status_code:
                     continue
-            if config.methods is not None and request.method not in config.methods:
-                continue
             _LOGGER.debug(
                 "Adding headers for %s on %s",
                 config.name,
@@ -317,6 +338,14 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
                     if header in response.headers:
                         del response.headers[header]
                 else:
-                    response.headers[header] = value
+                    used_value = value
+                    if (
+                        header in (HEADER_CONTENT_SECURITY_POLICY, HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY)
+                        and CSP_NONCE in value
+                    ):
+                        # Replace nonce placeholders
+                        used_value = used_value.replace(CSP_NONCE, f"'nonce-{nonce}'")
+
+                    response.headers[header] = used_value
 
         return response
