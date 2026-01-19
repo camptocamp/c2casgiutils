@@ -758,7 +758,7 @@ async def test_dispatch_nonce_uniqueness():
 
 @pytest.mark.asyncio
 async def test_dispatch_nonce_with_multiple_configs(mock_request):
-    """Test nonce generation stops after first match."""
+    """Test nonce generation stops after first match but both configs are applied."""
 
     async def simple_app(scope, receive, send):
         response = Response("Hello World")
@@ -770,6 +770,7 @@ async def test_dispatch_nonce_with_multiple_configs(mock_request):
         CSP_SCRIPT_SRC,
         CSP_SELF,
         HEADER_CONTENT_SECURITY_POLICY,
+        HEADER_X_CONTENT_TYPE_OPTIONS,
     )
 
     custom_config = {
@@ -789,6 +790,7 @@ async def test_dispatch_nonce_with_multiple_configs(mock_request):
                     CSP_DEFAULT_SRC: [CSP_SELF],
                     CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
                 },
+                HEADER_X_CONTENT_TYPE_OPTIONS: "nosniff",
             },
         },
     }
@@ -806,6 +808,9 @@ async def test_dispatch_nonce_with_multiple_configs(mock_request):
     # Both headers should use the same nonce
     csp = result.headers[HEADER_CONTENT_SECURITY_POLICY]
     assert f"'nonce-{nonce}'" in csp
+
+    # Verify second config was also applied
+    assert result.headers[HEADER_X_CONTENT_TYPE_OPTIONS] == "nosniff"
 
 
 @pytest.mark.asyncio
