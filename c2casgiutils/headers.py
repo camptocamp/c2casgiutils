@@ -11,6 +11,63 @@ from starlette.types import ASGIApp
 
 _LOGGER = logging.getLogger(__name__)
 
+# Headers
+HEADER_CONTENT_SECURITY_POLICY = "Content-Security-Policy"
+HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY = "Content-Security-Policy-Report-Only"
+HEADER_REPORTING_ENDPOINT = "Reporting-Endpoint"
+HEADER_X_FRAME_OPTIONS = "X-Frame-Options"
+HEADER_STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security"
+HEADER_X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options"
+HEADER_REFERRER_POLICY = "Referrer-Policy"
+HEADER_PERMISSIONS_POLICY = "Permissions-Policy"
+HEADER_X_DNS_PREFETCH_CONTROL = "X-DNS-Prefetch-Control"
+HEADER_EXPECT_CT = "Expect-CT"
+HEADER_ORIGIN_AGENT_CLUSTER = "Origin-Agent-Cluster"
+HEADER_CROSS_ORIGIN_EMBEDDER_POLICY = "Cross-Origin-Embedder-Policy"
+HEADER_CROSS_ORIGIN_OPENER_POLICY = "Cross-Origin-Opener-Policy"
+HEADER_CROSS_ORIGIN_RESOURCE_POLICY = "Cross-Origin-Resource-Policy"
+# Directive Names
+CSP_DEFAULT_SRC = "default-src"
+CSP_SCRIPT_SRC = "script-src"
+CSP_SCRIPT_SRC_ELEM = "script-src-elem"
+CSP_SCRIPT_SRC_ATTR = "script-src-attr"
+CSP_STYLE_SRC = "style-src"
+CSP_STYLE_SRC_ELEM = "style-src-elem"
+CSP_STYLE_SRC_ATTR = "style-src-attr"
+CSP_IMG_SRC = "img-src"
+CSP_CONNECT_SRC = "connect-src"
+CSP_FONT_SRC = "font-src"
+CSP_OBJECT_SRC = "object-src"
+CSP_MEDIA_SRC = "media-src"
+CSP_FRAME_SRC = "frame-src"
+CSP_WORKER_SRC = "worker-src"
+CSP_MANIFEST_SRC = "manifest-src"
+CSP_CHILD_SRC = "child-src"
+CSP_FENCED_FRAME_SRC = "fenced-frame-src"
+CSP_BASE_URI = "base-uri"
+CSP_FORM_ACTION = "form-action"
+CSP_FRAME_ANCESTORS = "frame-ancestors"
+CSP_REPORT_TO = "report-to"
+CSP_REQUIRE_TRUSTED_TYPES_FOR = "require-trusted-types-for"
+CSP_SANDBOX = "sandbox"
+CSP_TRUSTED_TYPES = "trusted-types"
+CSP_UPGRADE_INSECURE_REQUESTS = "upgrade-insecure-requests"
+# Special Security Keywords
+CSP_NONCE = "'nonce'"
+CSP_UNSAFE_INLINE = "'unsafe-inline'"
+CSP_UNSAFE_EVAL = "'unsafe-eval'"
+CSP_UNSAFE_HASHES = "'unsafe-hashes'"
+CSP_STRICT_DYNAMIC = "'strict-dynamic'"
+CSP_REPORT_SAMPLE = "'report-sample'"
+CSP_TRUSTED_TYPES_EVAL = "'trusted-types-eval'"
+CSP_WASM_UNSAFE_EVAL = "'wasm-unsafe-eval'"
+CSP_INLINE_SPECULATION_RULES = "'inline-speculation-rules'"
+# Source Keywords
+CSP_SELF = "'self'"
+CSP_NONE = "'none'"
+CSP_DATA = "data:"
+CSP_BLOB = "blob:"
+
 Header = str | list[str] | dict[str, str] | dict[str, list[str]] | None
 
 
@@ -73,43 +130,40 @@ def _build_header(
 DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     "default": {
         "headers": {
-            "Content-Security-Policy": {"default-src": ["'self'"]},
-            "X-Frame-Options": "DENY",
-            "Strict-Transport-Security": [f"max-age={86400 * 365}", "includeSubDomains", "preload"],
-            "X-Content-Type-Options": "nosniff",
-            "Referrer-Policy": "no-referrer",
-            "Permissions-Policy": ["geolocation=()", "microphone=()"],
-            "X-DNS-Prefetch-Control": "off",
-            "Expect-CT": "max-age=86400, enforce",
-            "Origin-Agent-Cluster": "?1",
-            "Cross-Origin-Embedder-Policy": "require-corp",
-            "Cross-Origin-Opener-Policy": "same-origin",
-            "Cross-Origin-Resource-Policy": "same-origin",
+            HEADER_CONTENT_SECURITY_POLICY: {CSP_DEFAULT_SRC: [CSP_SELF]},
+            HEADER_X_FRAME_OPTIONS: "DENY",
+            HEADER_STRICT_TRANSPORT_SECURITY: [f"max-age={86400 * 365}", "includeSubDomains", "preload"],
+            HEADER_X_CONTENT_TYPE_OPTIONS: "nosniff",
+            HEADER_REFERRER_POLICY: "no-referrer",
+            HEADER_PERMISSIONS_POLICY: ["geolocation=()", "microphone=()"],
+            HEADER_X_DNS_PREFETCH_CONTROL: "off",
+            HEADER_EXPECT_CT: "max-age=86400, enforce",
+            HEADER_ORIGIN_AGENT_CLUSTER: "?1",
+            HEADER_CROSS_ORIGIN_EMBEDDER_POLICY: "require-corp",
+            HEADER_CROSS_ORIGIN_OPENER_POLICY: "same-origin",
+            HEADER_CROSS_ORIGIN_RESOURCE_POLICY: "same-origin",
         },
         "order": -1,
     },
     "localhost": {  # Special case for localhost
         "netloc_match": r"^localhost(:\d+)?$",
         "headers": {
-            "Strict-Transport-Security": None,
+            HEADER_STRICT_TRANSPORT_SECURITY: None,
         },
     },
     "c2c": {  # Special case for c2c
         "path_match": r"^c2c/?$",
         "headers": {
-            "Content-Security-Policy": {
-                "default-src": ["'self'"],
-                "script-src-elem": [
-                    "'self'",
+            HEADER_CONTENT_SECURITY_POLICY: {
+                CSP_DEFAULT_SRC: [CSP_SELF],
+                CSP_SCRIPT_SRC_ELEM: [
+                    CSP_SELF,
                     "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/",
                     "https://cdn.jsdelivr.net/npm/@sbrunner/",
                 ],
-                "script-src-attr": ["'unsafe-inline'"],
-                "style-src-elem": [
-                    "'self'",
-                    "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/",
-                ],
-                "style-src-attr": ["'unsafe-inline'"],
+                CSP_SCRIPT_SRC_ATTR: [CSP_UNSAFE_INLINE],
+                CSP_STYLE_SRC_ELEM: [],
+                CSP_STYLE_SRC_ATTR: [CSP_UNSAFE_INLINE],
             },
         },
         "status_code": 200,
@@ -117,62 +171,62 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     "docs": {  # Special case for documentation
         "path_match": r"^(.*/)?docs/?$",
         "headers": {
-            "Content-Security-Policy": {
-                "default-src": [
-                    "'self'",
+            HEADER_CONTENT_SECURITY_POLICY: {
+                CSP_DEFAULT_SRC: [
+                    CSP_SELF,
                 ],
-                "script-src-elem": [
-                    "'self'",
-                    "'unsafe-inline'",
+                CSP_SCRIPT_SRC_ELEM: [
+                    CSP_SELF,
+                    CSP_UNSAFE_INLINE,
                     "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/",
                 ],
-                "style-src-elem": [
-                    "'self'",
+                CSP_STYLE_SRC_ELEM: [
+                    CSP_SELF,
                     "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/",
                 ],
-                "img-src": [
-                    "'self'",
-                    "data:",
+                CSP_IMG_SRC: [
+                    CSP_SELF,
+                    CSP_DATA,
                     "https://fastapi.tiangolo.com/img/",
                 ],
             },
-            "Cross-Origin-Embedder-Policy": None,
+            HEADER_CROSS_ORIGIN_EMBEDDER_POLICY: None,
         },
         "status_code": 200,
     },
     "redoc": {  # Special case for Redoc
         "path_match": r"^(.*/)?redoc/?$",
         "headers": {
-            "Content-Security-Policy": {
-                "default-src": [
-                    "'self'",
+            HEADER_CONTENT_SECURITY_POLICY: {
+                CSP_DEFAULT_SRC: [
+                    CSP_SELF,
                 ],
-                "script-src-elem": [
-                    "'self'",
-                    "'unsafe-inline'",
+                CSP_SCRIPT_SRC_ELEM: [
+                    CSP_SELF,
+                    CSP_UNSAFE_INLINE,
                     "https://cdn.jsdelivr.net/npm/redoc@2/",
                 ],
-                "style-src-elem": [
-                    "'self'",
-                    "'unsafe-inline'",
+                CSP_STYLE_SRC_ELEM: [
+                    CSP_SELF,
+                    CSP_UNSAFE_INLINE,
                     "https://fonts.googleapis.com/css",
                 ],
-                "img-src": [
-                    "'self'",
-                    "data:",
+                CSP_IMG_SRC: [
+                    CSP_SELF,
+                    CSP_DATA,
                     "https://fastapi.tiangolo.com/img/",
                     "https://cdn.redoc.ly/redoc/",
                 ],
-                "font-src": [
-                    "'self'",
-                    " https://fonts.gstatic.com/s/",
+                CSP_FONT_SRC: [
+                    CSP_SELF,
+                    "https://fonts.gstatic.com/s/",
                 ],
-                "worker-src": [
-                    "'self'",
-                    "blob:",
+                CSP_WORKER_SRC: [
+                    CSP_SELF,
+                    CSP_BLOB,
                 ],
             },
-            "Cross-Origin-Embedder-Policy": None,
+            HEADER_CROSS_ORIGIN_EMBEDDER_POLICY: None,
         },
     },
 }
@@ -208,9 +262,9 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             path_match = re.compile(path_match_str) if path_match_str is not None else None
             headers = {}
             for header, value in config["headers"].items():
-                if header == "Content-Security-Policy":
+                if header in (HEADER_CONTENT_SECURITY_POLICY, HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY):
                     headers[header] = _build_header(value, dict_separator=" ", final_separator=True)
-                elif header == "Permissions-Policy":
+                elif header == HEADER_PERMISSIONS_POLICY:
                     headers[header] = _build_header(value, separator=", ")
                 else:
                     headers[header] = _build_header(value)
