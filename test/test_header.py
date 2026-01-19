@@ -15,7 +15,6 @@ class State:
     """Simple state object for tests."""
 
 
-
 @pytest.fixture
 def mock_request():
     """Create a mock request with a simple state object."""
