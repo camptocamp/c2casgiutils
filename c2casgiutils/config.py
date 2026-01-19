@@ -96,7 +96,7 @@ class Sentry(BaseModel):
                 for key, value in os.environ.items()
                 if key.startswith("C2C__SENTRY__TAG_")
             },
-            description="Default tags for Sentry events, loaded from environment variables with prefix C2C__SENTRY__TAG__",
+            description="Default tags for Sentry events, loaded from environment variables with prefix C2C__SENTRY__TAG_",
         ),
     ]
 
