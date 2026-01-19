@@ -1,7 +1,8 @@
+import os
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -87,6 +88,27 @@ class Sentry(BaseModel):
         None
     )
     send_client_reports: Annotated[bool, Field(description="Send client reports to Sentry")] = True
+    tags: Annotated[
+        dict[str, str],
+        Field(
+            description=(
+                "Default tags for Sentry events, loaded from environment variables with prefix "
+                "`C2C__SENTRY__TAG_` to set tags. The tag name will be the part after the prefix, "
+                "converted to lowercase. For example, `C2C__SENTRY__TAG_SERVICE=my-service` will set a tag "
+                "named `service` (lowercase) with value `my-service`."
+            ),
+        ),
+    ] = {}
+
+    @model_validator(mode="after")
+    def build_sentry_tags(self) -> "Sentry":
+        """Build the tags dictionary from environment variables."""
+        # Get all environment variables that start with "C2C__SENTRY__TAG_"
+        prefix = "C2C__SENTRY__TAG_"
+        self.tags = {
+            key[len(prefix) :].lower(): value for key, value in os.environ.items() if key.startswith(prefix)
+        }
+        return self
 
 
 class AuthGitHub(BaseModel):
