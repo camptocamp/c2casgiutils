@@ -14,7 +14,6 @@ from c2casgiutils.headers import ArmorHeaderMiddleware, _build_header
 class State:
     """Simple state object for tests."""
 
-    pass
 
 
 @pytest.fixture
