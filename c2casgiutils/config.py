@@ -91,21 +91,14 @@ class Sentry(BaseModel):
     tags: Annotated[
         dict[str, str],
         Field(
-            description="Default tags for Sentry events, loaded from environment variables with prefix C2C__SENTRY__TAG__"
+            default_factory=lambda: {
+                key[len("C2C__SENTRY__TAG_") :].lower(): value
+                for key, value in os.environ.items()
+                if key.startswith("C2C__SENTRY__TAG_")
+            },
+            description="Default tags for Sentry events, loaded from environment variables with prefix C2C__SENTRY__TAG__",
         ),
-    ] = {}
-
-    @field_validator("tags", mode="before")
-    @classmethod
-    def build_config_dict(cls, value: dict[str, str] | None) -> dict[str, str]:
-        """Build the tags dictionary from environment variables."""
-        del value
-
-        # Get all environment variables that start with "C2C__SENTRY__TAG__"
-        prefix = "C2C__SENTRY__TAG_"
-        return {
-            key[len(prefix) :].lower(): value for key, value in os.environ.items() if key.startswith(prefix)
-        }
+    ]
 
 
 class AuthGitHub(BaseModel):
