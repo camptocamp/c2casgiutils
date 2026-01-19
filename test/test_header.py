@@ -10,6 +10,22 @@ from starlette.responses import Response
 from c2casgiutils.headers import ArmorHeaderMiddleware, _build_header
 
 
+class State:
+    """Simple state object for tests."""
+
+    pass
+
+
+@pytest.fixture
+def mock_request():
+    """Create a mock request with a simple state object."""
+    request = MagicMock(spec=Request)
+    request.base_url = urllib.parse.urlparse("http://example.com/")
+    request.url = urllib.parse.urlparse("http://example.com/path")
+    request.state = State()
+    return request
+
+
 def test_string_value():
     """Test with string input."""
     result = _build_header("text/html")
@@ -529,7 +545,7 @@ async def test_dispatch_header_value_assignment_bug_fix():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_nonce_generation_and_replacement():
+async def test_dispatch_nonce_generation_and_replacement(mock_request):
     """Test that nonce is generated and replaced in CSP header."""
 
     async def simple_app(scope, receive, send):
@@ -556,24 +572,14 @@ async def test_dispatch_nonce_generation_and_replacement():
     }
     middleware = ArmorHeaderMiddleware(simple_app, custom_config)
 
-    request = MagicMock(spec=Request)
-    request.base_url = urllib.parse.urlparse("http://example.com/")
-    request.url = urllib.parse.urlparse("http://example.com/path")
-
-    # Use a simple object for state
-    class State:
-        pass
-
-    request.state = State()
-
     mock_response = Response("Hello World")
     call_next = AsyncMock(return_value=mock_response)
 
-    result = await middleware.dispatch(request, call_next)
+    result = await middleware.dispatch(mock_request, call_next)
 
     # Check that nonce was generated and set on request.state
-    assert hasattr(request.state, "nonce")
-    nonce = request.state.nonce
+    assert hasattr(mock_request.state, "nonce")
+    nonce = mock_request.state.nonce
     assert nonce is not None
     assert len(nonce) > 0
 
@@ -584,7 +590,7 @@ async def test_dispatch_nonce_generation_and_replacement():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_nonce_replacement_in_csp_report_only():
+async def test_dispatch_nonce_replacement_in_csp_report_only(mock_request):
     """Test that nonce is replaced in Content-Security-Policy-Report-Only header."""
 
     async def simple_app(scope, receive, send):
@@ -611,24 +617,14 @@ async def test_dispatch_nonce_replacement_in_csp_report_only():
     }
     middleware = ArmorHeaderMiddleware(simple_app, custom_config)
 
-    request = MagicMock(spec=Request)
-    request.base_url = urllib.parse.urlparse("http://example.com/")
-    request.url = urllib.parse.urlparse("http://example.com/path")
-
-    # Use a simple object for state
-    class State:
-        pass
-
-    request.state = State()
-
     mock_response = Response("Hello World")
     call_next = AsyncMock(return_value=mock_response)
 
-    result = await middleware.dispatch(request, call_next)
+    result = await middleware.dispatch(mock_request, call_next)
 
     # Check that nonce was generated
-    assert hasattr(request.state, "nonce")
-    nonce = request.state.nonce
+    assert hasattr(mock_request.state, "nonce")
+    nonce = mock_request.state.nonce
 
     # Check that CSP-Report-Only header contains the nonce
     csp = result.headers[HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY]
@@ -637,7 +633,7 @@ async def test_dispatch_nonce_replacement_in_csp_report_only():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_nonce_multiple_placeholders():
+async def test_dispatch_nonce_multiple_placeholders(mock_request):
     """Test that multiple nonce placeholders are replaced correctly."""
 
     async def simple_app(scope, receive, send):
@@ -666,23 +662,13 @@ async def test_dispatch_nonce_multiple_placeholders():
     }
     middleware = ArmorHeaderMiddleware(simple_app, custom_config)
 
-    request = MagicMock(spec=Request)
-    request.base_url = urllib.parse.urlparse("http://example.com/")
-    request.url = urllib.parse.urlparse("http://example.com/path")
-
-    # Use a simple object for state
-    class State:
-        pass
-
-    request.state = State()
-
     mock_response = Response("Hello World")
     call_next = AsyncMock(return_value=mock_response)
 
-    result = await middleware.dispatch(request, call_next)
+    result = await middleware.dispatch(mock_request, call_next)
 
     # Check that nonce was generated
-    nonce = request.state.nonce
+    nonce = mock_request.state.nonce
 
     # Check that all nonce placeholders are replaced
     csp = result.headers[HEADER_CONTENT_SECURITY_POLICY]
@@ -691,7 +677,7 @@ async def test_dispatch_nonce_multiple_placeholders():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_nonce_not_generated_when_not_needed():
+async def test_dispatch_nonce_not_generated_when_not_needed(mock_request):
     """Test that nonce is not generated when CSP doesn't include nonce placeholder."""
 
     async def simple_app(scope, receive, send):
@@ -717,23 +703,13 @@ async def test_dispatch_nonce_not_generated_when_not_needed():
     }
     middleware = ArmorHeaderMiddleware(simple_app, custom_config)
 
-    request = MagicMock(spec=Request)
-    request.base_url = urllib.parse.urlparse("http://example.com/")
-    request.url = urllib.parse.urlparse("http://example.com/path")
-
-    # Use a simple object to track if nonce was set
-    class State:
-        pass
-
-    request.state = State()
-
     mock_response = Response("Hello World")
     call_next = AsyncMock(return_value=mock_response)
 
-    result = await middleware.dispatch(request, call_next)
+    result = await middleware.dispatch(mock_request, call_next)
 
     # Check that nonce was not generated
-    assert not hasattr(request.state, "nonce")
+    assert not hasattr(mock_request.state, "nonce")
 
 
 @pytest.mark.asyncio
@@ -769,11 +745,6 @@ async def test_dispatch_nonce_uniqueness():
         request = MagicMock(spec=Request)
         request.base_url = urllib.parse.urlparse("http://example.com/")
         request.url = urllib.parse.urlparse("http://example.com/path")
-
-        # Use a simple object for state
-        class State:
-            pass
-
         request.state = State()
 
         mock_response = Response("Hello World")
@@ -787,7 +758,7 @@ async def test_dispatch_nonce_uniqueness():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_nonce_with_multiple_configs():
+async def test_dispatch_nonce_with_multiple_configs(mock_request):
     """Test nonce generation stops after first match."""
 
     async def simple_app(scope, receive, send):
@@ -824,23 +795,13 @@ async def test_dispatch_nonce_with_multiple_configs():
     }
     middleware = ArmorHeaderMiddleware(simple_app, custom_config)
 
-    request = MagicMock(spec=Request)
-    request.base_url = urllib.parse.urlparse("http://example.com/")
-    request.url = urllib.parse.urlparse("http://example.com/path")
-
-    # Use a simple object for state
-    class State:
-        pass
-
-    request.state = State()
-
     mock_response = Response("Hello World")
     call_next = AsyncMock(return_value=mock_response)
 
-    result = await middleware.dispatch(request, call_next)
+    result = await middleware.dispatch(mock_request, call_next)
 
     # Should only generate one nonce
-    nonce = request.state.nonce
+    nonce = mock_request.state.nonce
     assert nonce is not None
 
     # Both headers should use the same nonce
@@ -849,7 +810,7 @@ async def test_dispatch_nonce_with_multiple_configs():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_nonce_base64_encoding():
+async def test_dispatch_nonce_base64_encoding(mock_request):
     """Test that nonce is properly base64 encoded."""
 
     async def simple_app(scope, receive, send):
@@ -882,24 +843,18 @@ async def test_dispatch_nonce_base64_encoding():
     request.base_url = urllib.parse.urlparse("http://example.com/")
     request.url = urllib.parse.urlparse("http://example.com/path")
 
-    # Use a simple object for state
-    class State:
-        pass
-
-    request.state = State()
-
     mock_response = Response("Hello World")
     call_next = AsyncMock(return_value=mock_response)
 
-    result = await middleware.dispatch(request, call_next)
+    result = await middleware.dispatch(mock_request, call_next)
 
-    nonce = request.state.nonce
+    nonce = mock_request.state.nonce
 
     # Verify it's valid base64
     try:
         base64.b64decode(nonce)
         valid_base64 = True
-    except Exception:
+    except (ValueError, base64.binascii.Error):
         valid_base64 = False
 
     assert valid_base64, "Nonce should be valid base64"
