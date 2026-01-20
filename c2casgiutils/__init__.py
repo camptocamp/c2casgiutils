@@ -24,3 +24,4 @@ async def startup(main_app: FastAPI) -> None:
     """Initialize application on startup."""
     await broadcast.startup(main_app)
     await tools.startup(main_app)
+    await auth.startup(main_app)
