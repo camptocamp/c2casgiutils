@@ -642,10 +642,15 @@ if _auth_type == AuthenticationType.GITHUB:
                     return _ErrorResponse(error=f"Failed to obtain token: {await response_token.text()}")
                 token = await response_token.json()
 
+            token_type = token.get("token_type")
+            if token_type is None or token_type.lower() != "bearer":
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return _ErrorResponse(error=f"Invalid token_type: expected 'bearer', got {token_type!r}")
+
             # Get user info
             user_url = settings.auth.github.user_url
             headers = {
-                "Authorization": f"Bearer {token}",
+                "Authorization": f"Bearer {token['access_token']}",
                 "Accept": "application/json",
             }
 
@@ -659,7 +664,7 @@ if _auth_type == AuthenticationType.GITHUB:
             login=user["login"],
             display_name=user["name"],
             url=user["html_url"],
-            token=token,
+            token=token["access_token"],
         )
         _set_jwt_cookie(request, response, payload=user_information.model_dump())
 
