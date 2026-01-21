@@ -65,7 +65,7 @@ async def _is_auth_secret(
     secret = query_secret or header_secret
     if secret is None:
         try:
-            secret_payload = _get_jwt_cookie(request, settings.auth.cookie)
+            secret_payload = _get_jwt_cookie(request)
             if secret_payload is not None:
                 secret = secret_payload.get("secret")
         except jwt.ExpiredSignatureError:
@@ -76,7 +76,7 @@ async def _is_auth_secret(
     if secret is not None:
         if secret == "":  # nosec
             # Logout
-            response.delete_cookie(key=settings.auth.cookie)
+            response.delete_cookie(key=settings.auth.jwt.cookie.name)
             return False
         if secret != expected:
             return False
@@ -106,10 +106,7 @@ async def _is_auth_user_github(request: Request) -> AuthInfo:
             ),
         )
     try:
-        user_payload = _get_jwt_cookie(
-            request,
-            settings.auth.cookie,
-        )
+        user_payload = _get_jwt_cookie(request)
     except jwt.ExpiredSignatureError as jwt_exception:
         raise HTTPException(401, "Expired session") from jwt_exception
     except jwt.InvalidTokenError as jwt_exception:
@@ -301,8 +298,8 @@ def _set_jwt_cookie(
     request: Request,
     response: Response,
     payload: dict[str, Any],
-    cookie_name: str = settings.auth.cookie,
-    expiration: int = settings.auth.cookie_age,
+    cookie_name: str = settings.auth.jwt.cookie.name,
+    expiration: int = settings.auth.jwt.cookie.age,
     path: str = settings.auth.jwt.cookie.path,
 ) -> None:
     """
@@ -337,7 +334,9 @@ def _set_jwt_cookie(
     )
 
 
-def _get_jwt_cookie(request: Request, cookie_name: str) -> dict[str, Any] | None:
+def _get_jwt_cookie(
+    request: Request, cookie_name: str = settings.auth.jwt.cookie.name
+) -> dict[str, Any] | None:
     """
     Get the JWT cookie from the request.
 
@@ -371,7 +370,7 @@ class _ErrorResponse(BaseModel):
 
 async def _github_logout(request: Request, response: Response) -> RedirectResponse:
     """Logout the user."""
-    response.delete_cookie(key=settings.auth.cookie)
+    response.delete_cookie(key=settings.auth.jwt.cookie.name)
 
     redirect_url = request.query_params.get("came_from", str(request.url_for("c2c_index")))
     return RedirectResponse(redirect_url)
@@ -421,7 +420,7 @@ if _auth_type == AuthenticationType.SECRET:
     @router.get("/logout")
     async def c2c_logout(response: Response) -> dict[str, str]:
         """Logout by clearing the authentication cookie."""
-        response.delete_cookie(key=settings.auth.cookie)
+        response.delete_cookie(key=settings.auth.jwt.cookie.name)
         return {"status": "success", "message": "Logged out successfully"}
 
 
