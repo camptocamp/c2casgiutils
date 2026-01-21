@@ -124,22 +124,27 @@ class AuthGitHub(BaseModel):
 class AuthJWTCookie(BaseModel):
     """JWT cookie settings."""
 
+    name: Annotated[str, Field(description="Authentication cookie name")] = "c2c-jwt-auth"
+    age: Annotated[
+        int,
+        Field(description="Authentication cookie age in seconds (default: 7 days)"),
+    ] = 7 * 24 * 3600  # 7 days
     same_site: Annotated[
         Literal["lax", "strict", "none"],
         Field(
-            description="SameSite attribute for JWT cookie (default: strict)",
+            description="SameSite attribute for JWT cookie",
         ),
     ] = "strict"
     secure: Annotated[
         bool,
         Field(
-            description="Whether the JWT cookie should be secure (default: True)",
+            description="Whether the JWT cookie should be secure",
         ),
     ] = True
     path: Annotated[
         str | None,
         Field(
-            description="Path for the JWT cookie (default: the path to the index page)",
+            description="Path for the JWT cookie (default: the c2c index path)",
         ),
     ] = None
 
@@ -162,11 +167,6 @@ class Auth(BaseModel):
     """C2C Authentication settings."""
 
     # GitHub authentication settings
-    cookie_age: Annotated[
-        int,
-        Field(description="Authentication cookie age in seconds (default: 7 days)"),
-    ] = 7 * 24 * 3600  # 7 days
-    cookie: Annotated[str, Field(description="Authentication cookie name")] = "c2c-auth"
     jwt: Annotated[AuthJWT, Field(description="JWT authentication settings")] = AuthJWT()
 
     # Trivial auth (not secure)

@@ -200,18 +200,6 @@ _Optional_, default value: `True`
 
 Send client reports to Sentry
 
-### `C2C__AUTH__COOKIE_AGE`
-
-_Optional_, default value: `604800`
-
-Authentication cookie age in seconds (default: 7 days)
-
-### `C2C__AUTH__COOKIE`
-
-_Optional_, default value: `c2c-auth`
-
-Authentication cookie name
-
 ### `C2C__AUTH__JWT__SECRET`
 
 _Optional_, default value: `None`
@@ -224,11 +212,23 @@ _Optional_, default value: `HS256`
 
 JWT algorithm (default: HS256)
 
+### `C2C__AUTH__JWT__COOKIE__NAME`
+
+_Optional_, default value: `c2c-jwt-auth`
+
+Authentication cookie name
+
+### `C2C__AUTH__JWT__COOKIE__AGE`
+
+_Optional_, default value: `604800`
+
+Authentication cookie age in seconds (default: 7 days)
+
 ### `C2C__AUTH__JWT__COOKIE__SAME_SITE`
 
 _Optional_, default value: `strict`
 
-SameSite attribute for JWT cookie (default: strict)
+SameSite attribute for JWT cookie
 
 #### Possible values
 
@@ -238,13 +238,13 @@ SameSite attribute for JWT cookie (default: strict)
 
 _Optional_, default value: `True`
 
-Whether the JWT cookie should be secure (default: True)
+Whether the JWT cookie should be secure
 
 ### `C2C__AUTH__JWT__COOKIE__PATH`
 
 _Optional_, default value: `None`
 
-Path for the JWT cookie (default: the path to the index page)
+Path for the JWT cookie (default: the c2c index path)
 
 ### `C2C__AUTH__SECRET`
 
