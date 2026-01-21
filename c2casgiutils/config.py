@@ -139,9 +139,9 @@ class AuthJWTCookie(BaseModel):
     path: Annotated[
         str | None,
         Field(
-            description="Path for the JWT cookie (default: the path to the index page)",
+            description="Path for the JWT cookie",
         ),
-    ] = None
+    ] = "/"
 
 
 class AuthJWT(BaseModel):
