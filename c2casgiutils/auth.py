@@ -76,7 +76,7 @@ async def _is_auth_secret(
     if secret is not None:
         if secret == "":  # nosec
             # Logout
-            response.delete_cookie(key=settings.auth.jwt.cookie.name)
+            response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
             return False
         if secret != expected:
             return False
@@ -294,6 +294,13 @@ def is_enabled() -> bool:
 # Helper functions for FastAPI dependency injections
 
 
+def _get_jwt_cookie_path(request: Request) -> str:
+    """Get the path for the JWT cookie."""
+    if settings.auth.jwt.cookie.path is not None:
+        return settings.auth.jwt.cookie.path
+    return request.url_for("c2c_index").path
+
+
 def _set_jwt_cookie(
     request: Request,
     response: Response,
@@ -313,10 +320,7 @@ def _set_jwt_cookie(
         expiration: The expiration time in seconds for the cookie and the token.
     """
     if path is None:
-        if settings.auth.jwt.cookie.path is not None:
-            path = settings.auth.jwt.cookie.path
-        else:
-            path = request.url_for("c2c_index").path
+        path = _get_jwt_cookie_path(request)
 
     jwt_payload = {
         **payload,
@@ -370,7 +374,7 @@ class _ErrorResponse(BaseModel):
 
 async def _github_logout(request: Request, response: Response) -> RedirectResponse:
     """Logout the user."""
-    response.delete_cookie(key=settings.auth.jwt.cookie.name)
+    response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
 
     redirect_url = request.query_params.get("came_from", str(request.url_for("c2c_index")))
     return RedirectResponse(redirect_url)
@@ -418,9 +422,9 @@ if _auth_type == AuthenticationType.SECRET:
         return {"status": "success", "message": "Authentication successful"}
 
     @router.get("/logout")
-    async def c2c_logout(response: Response) -> dict[str, str]:
+    async def c2c_logout(request: Request, response: Response) -> dict[str, str]:
         """Logout by clearing the authentication cookie."""
-        response.delete_cookie(key=settings.auth.jwt.cookie.name)
+        response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
         return {"status": "success", "message": "Logged out successfully"}
 
 
@@ -586,6 +590,7 @@ if _auth_type == AuthenticationType.GITHUB:
 
         response.delete_cookie(
             key=settings.auth.github.state_cookie,
+            path=request.url_for("c2c_github_callback").path,
         )
 
         # Verify state parameter to prevent CSRF attacks
