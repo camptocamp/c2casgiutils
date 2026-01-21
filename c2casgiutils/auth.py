@@ -300,7 +300,7 @@ def _set_jwt_cookie(
     payload: dict[str, Any],
     cookie_name: str = settings.auth.jwt.cookie.name,
     expiration: int = settings.auth.jwt.cookie.age,
-    path: str = settings.auth.jwt.cookie.path,
+    path: str | None = None,
 ) -> None:
     """
     Set a JWT cookie in the response.
@@ -546,6 +546,7 @@ if _auth_type == AuthenticationType.GITHUB:
             },
             cookie_name=settings.auth.github.state_cookie,
             expiration=settings.auth.github.state_cookie_age,
+            path=request.url_for("c2c_github_callback").path,
         )
 
         redirect_response = RedirectResponse(authorization_url)
