@@ -1,6 +1,5 @@
 import logging
-from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Protocol
 
 from c2casgiutils import broadcast
 from fastapi import FastAPI
@@ -28,10 +27,24 @@ async def hello() -> HelloResponse:
 class BroadcastResponse(BaseModel):
     """Response from broadcast endpoint."""
 
-    result: list[dict[str, Any]] | None = None
+    result: list[str] | None = None
 
 
-_echo_handler: Callable[[], Awaitable[list[dict[str, Any]] | None]] = None  # type: ignore[assignment]
+class _EchoHandlerInput(BaseModel):
+    message: str
+
+
+class _EchoHandlerOutput(BaseModel):
+    message: str
+
+
+class _EchoHandlerProto(Protocol):
+    async def __call__(
+        self, *, message: _EchoHandlerInput
+    ) -> list[broadcast.BroadcastResponse[_EchoHandlerOutput]] | None: ...
+
+
+_echo_handler: _EchoHandlerProto = None  # type: ignore[assignment]
 
 
 @app.get("/broadcast")
@@ -40,13 +53,18 @@ async def send_broadcast() -> BroadcastResponse:
     Send a broadcast message to a channel.
     """
     assert _echo_handler is not None, "Broadcast handler is not set up"
-    return BroadcastResponse(result=await _echo_handler())
+    return BroadcastResponse(
+        result=[
+            response.payload.message
+            for response in await _echo_handler(message=_EchoHandlerInput(message="coucou"))
+        ]
+    )
 
 
 # Create a handler that will receive broadcasts
-async def __echo_handler() -> dict[str, Any]:
+async def __echo_handler(*, message: _EchoHandlerInput) -> _EchoHandlerOutput:
     """Echo handler for broadcast messages."""
-    return {"message": "Broadcast echo"}
+    return _EchoHandlerOutput(message="Broadcast echo: " + message.message)
 
 
 async def startup(main_app: FastAPI) -> None:

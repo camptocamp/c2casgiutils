@@ -1,10 +1,24 @@
 import os
 import socket
-from typing import Any
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel
+
+_BroadcastResponse = TypeVar("_BroadcastResponse")
 
 
-def add_host_info(response: Any) -> Any:
+class BroadcastResponse(BaseModel, Generic[_BroadcastResponse]):
+    """Broadcast response model."""
+
+    hostname: str
+    pid: int
+    payload: _BroadcastResponse
+
+
+def add_host_info(response: _BroadcastResponse) -> BroadcastResponse[_BroadcastResponse]:
     """Add information related to the host."""
-    if isinstance(response, dict):
-        return {**response, "hostname": socket.gethostname(), "pid": os.getpid()}
-    return response
+    return BroadcastResponse(
+        hostname=socket.gethostname(),
+        pid=os.getpid(),
+        payload=response,
+    )
