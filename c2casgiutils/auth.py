@@ -319,6 +319,10 @@ def _set_jwt_cookie(
         cookie_name: The name of the cookie to set.
         expiration: The expiration time in seconds for the cookie and the token.
     """
+    if settings.auth.jwt.secret is None:
+        message = "JWT secret is not set in the C2C__AUTH__JWT__SECRET environment variable"
+        raise ValueError(message)
+
     if path is None:
         path = _get_jwt_cookie_path(request)
 
@@ -353,8 +357,14 @@ def _get_jwt_cookie(
     -------
         The decoded JWT payload if the cookie exists and is valid, otherwise None.
     """
+
     if cookie_name not in request.cookies:
         return None
+
+    if settings.auth.jwt.secret is None:
+        message = "JWT secret is not set in the C2C__AUTH__JWT__SECRET environment variable"
+        raise ValueError(message)
+
     return cast(
         "dict[str, Any]",
         jwt.decode(
