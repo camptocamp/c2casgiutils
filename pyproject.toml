@@ -103,7 +103,7 @@ include = [
   "c2casgiutils/tools/templates/*",
 ]
 requires-python = ">=3.10"
-dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "prometheus-fastapi-instrumentator", "redis", "aiohttp", "pyjwt", "aiofiles", "sentry-sdk[fastapi]"]
+dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "prometheus-fastapi-instrumentator", "redis", "aiohttp", "pyjwt", "aiofiles", "sentry-sdk[fastapi]", "python-multipart==0.0.22"]
 
 [project.urls]
 repository = "https://github.com/camptocamp/c2casgiutils"
