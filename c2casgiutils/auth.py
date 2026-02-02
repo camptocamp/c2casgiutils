@@ -3,7 +3,7 @@ import logging
 import secrets
 import urllib.parse
 from enum import Enum
-from typing import Annotated, Any, TypedDict, cast
+from typing import Annotated, Any, TypedDict
 
 import aiohttp
 import jwt
@@ -355,14 +355,11 @@ def _get_jwt_cookie(
     """
     if cookie_name not in request.cookies:
         return None
-    return cast(
-        "dict[str, Any]",
-        jwt.decode(
-            request.cookies[cookie_name],
-            settings.auth.jwt.secret,
-            algorithms=[settings.auth.jwt.algorithm],
-            options={"require": ["exp", "iat"]},  # Force presence of timestamps
-        ),
+    return jwt.decode(
+        request.cookies[cookie_name],
+        settings.auth.jwt.secret,
+        algorithms=[settings.auth.jwt.algorithm],
+        options={"require": ["exp", "iat"]},  # Force presence of timestamps
     )
 
 
