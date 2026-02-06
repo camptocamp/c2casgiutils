@@ -23,6 +23,12 @@ class Headers extends window.admin.Element {
       ? Object.entries(data.headers).map(([key, value]) => window.lit.html`<b>${key}</b>: ${value}`)
       : [];
     const client_info = data.client_info;
+    const url = client_info.url
+      ? Object.entries(client_info.url).map(([key, value]) => window.lit.html`${key}: <b>${value}</b>`)
+      : [];
+    const baseUrl = client_info.base_url
+      ? Object.entries(client_info.base_url).map(([key, value]) => window.lit.html`${key}: <b>${value}</b>`)
+      : [];
     const queryParams = client_info.query_params
       ? Object.entries(client_info.query_params).map(
           ([key, value]) => window.lit.html`<b>${key}</b>: ${value}`,
@@ -37,11 +43,15 @@ class Headers extends window.admin.Element {
     return window.lit.html`<table class="table"><tbody>
               <tr>
                 <th>Url</th>
-                <td>${client_info.url}</td>
+                <td><b>${client_info.url_str}</b><br>
+                ${url.map((param) => window.lit.html`${param}<br>`)}
+                </td>
               </tr>
               <tr>
                 <th>Base&nbsp;Url</th>
-                <td>${client_info.base_url}</td>
+                <td><b>${client_info.base_url_str}</b><br>
+                ${baseUrl.map((param) => window.lit.html`${param}<br>`)}
+                </td>
               </tr>
               <tr>
                 <th>Query&nbsp;Params</th>
