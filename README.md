@@ -200,6 +200,12 @@ _Optional_, default value: `True`
 
 Send client reports to Sentry
 
+### `C2C__SENTRY__TAGS`
+
+_Optional_, default value: `{}`
+
+Default tags for Sentry events, loaded from environment variables with prefix `C2C__SENTRY__TAG_` to set tags. The tag name will be the part after the prefix, converted to lowercase. For example, `C2C__SENTRY__TAG_SERVICE=my-service` will set a tag named `service` (lowercase) with value `my-service`.
+
 ### `C2C__AUTH__JWT__SECRET`
 
 _Optional_, default value: `None`
