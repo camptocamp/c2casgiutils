@@ -22,7 +22,12 @@ _LOGGER = logging.getLogger(__name__)
 # Initialize Sentry if the URL is provided
 if config.settings.sentry.dsn or "SENTRY_DSN" in os.environ:
     _LOGGER.info("Sentry is enabled with URL: %s", config.settings.sentry.dsn or os.environ.get("SENTRY_DSN"))
-    sentry_sdk.init(**config.settings.sentry.model_dump())
+    sentry_sdk.init(
+        **{k: v for k, v in config.settings.sentry.model_dump().items() if v is not None and k != "tags"}
+    )
+
+    for tag, value in config.settings.sentry.tags.items():
+        sentry_sdk.set_tag(tag, value)
 
 
 @asynccontextmanager

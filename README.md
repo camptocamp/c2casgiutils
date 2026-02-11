@@ -200,6 +200,12 @@ _Optional_, default value: `True`
 
 Send client reports to Sentry
 
+### `C2C__SENTRY__TAGS`
+
+_Optional_, default value: `{}`
+
+Default tags for Sentry events, loaded from environment variables with prefix `C2C__SENTRY__TAG_` to set tags. The tag name will be the part after the prefix, converted to lowercase. For example, `C2C__SENTRY__TAG_SERVICE=my-service` will set a tag named `service` (lowercase) with value `my-service`.
+
 ### `C2C__AUTH__JWT__SECRET`
 
 _Optional_, default value: `None`
@@ -736,7 +742,10 @@ import sentry_sdk
 # Initialize Sentry if the URL is provided
 if config.settings.sentry.dsn or 'SENTRY_DSN' in os.environ:
     _LOGGER.info("Sentry is enabled with URL: %s", config.settings.sentry.url or os.environ.get("SENTRY_DSN"))
-    sentry_sdk.init(**config.settings.sentry.model_dump())
+    sentry_sdk.init(**{k: v for k, v in config.settings.sentry.model_dump().items() if v is not None and k != "tags"})
+
+    for tag, value in config.settings.sentry.tags.items():
+        sentry_sdk.set_tag(tag, value)
 ```
 
 Sentry will automatically capture exceptions and errors in your FastAPI application. For more advanced usage, refer to the [Sentry Python SDK documentation](https://docs.sentry.io/platforms/python/) and [FastAPI integration guide](https://docs.sentry.io/platforms/python/integrations/fastapi/).
