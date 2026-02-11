@@ -237,6 +237,17 @@ class SettingsTools(BaseModel):
     ] = SettingsToolsLogging()
 
 
+class SettingsBroadcast(BaseModel):
+    """C2C Broadcast settings."""
+
+    prefix: Annotated[
+        str,
+        Field(
+            description="Prefix for broadcast messages",
+        ),
+    ] = "broadcast_api_"
+
+
 class Settings(BaseSettings, extra="ignore"):
     """Application settings."""
 
@@ -266,6 +277,16 @@ class Settings(BaseSettings, extra="ignore"):
         SettingsTools,
         Field(description="Tools settings"),
     ] = SettingsTools()
+    broadcast: Annotated[
+        SettingsBroadcast,
+        Field(description="Broadcast settings"),
+    ] = SettingsBroadcast()
+    http: Annotated[
+        bool,
+        Field(
+            description="The application is running in HTTP mode to be used for development only (default: False)",
+        ),
+    ] = False
 
     model_config = SettingsConfigDict(env_prefix="C2C__", env_nested_delimiter="__")
 
