@@ -7,7 +7,7 @@ from typing import Annotated, Any, TypedDict
 
 import aiohttp
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyHeader, APIKeyQuery
 from pydantic import BaseModel
@@ -190,6 +190,15 @@ def auth_type() -> AuthenticationType:
     return AuthenticationType.NONE
 
 
+async def startup(main_app: FastAPI) -> None:
+    """Initialize the authentication system on application startup."""
+    del main_app  # Unused argument
+
+    if auth_type() == AuthenticationType.GITHUB and settings.auth.jwt.secret is None:
+        message = "JWT secret is not set in the C2C__AUTH__JWT__SECRET environment variable"
+        raise ValueError(message)
+
+
 async def check_access(
     auth_info: Annotated[AuthInfo, Depends(get_auth)],
     auth_config: AuthConfig,
@@ -319,6 +328,7 @@ def _set_jwt_cookie(
         cookie_name: The name of the cookie to set.
         expiration: The expiration time in seconds for the cookie and the token.
     """
+
     if path is None:
         path = _get_jwt_cookie_path(request)
 
@@ -353,8 +363,10 @@ def _get_jwt_cookie(
     -------
         The decoded JWT payload if the cookie exists and is valid, otherwise None.
     """
+
     if cookie_name not in request.cookies:
         return None
+
     return jwt.decode(
         request.cookies[cookie_name],
         settings.auth.jwt.secret,
