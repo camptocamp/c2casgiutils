@@ -243,7 +243,6 @@ class SettingsTools(BaseModel):
     ] = SettingsToolsLogging()
 
 
-
 class Settings(BaseSettings, extra="ignore"):
     """Application settings."""
 
