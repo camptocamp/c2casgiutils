@@ -354,6 +354,12 @@ _Optional_, default value: `c2casgiutils`
 
 Application module name for logging
 
+### `C2C__HTTP`
+
+_Optional_, default value: `False`
+
+The application is running in HTTP mode to be used for development only (default: False)
+
 <!-- generated env. vars. end -->
 
 ## Installation
@@ -394,7 +400,7 @@ app.add_middleware(
 )
 
 # Add HTTPSRedirectMiddleware
-if os.environ.get("HTTP", "False").lower() not in ["true", "1"]:
+if config.settings.http:
     app.add_middleware(HTTPSRedirectMiddleware)
 
 # Add GZipMiddleware
@@ -409,10 +415,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    headers.ArmorHeaderMiddleware,
+app.add_middleware(headers.ArmorHeaderMiddleware,
     headers_config={
-        "http": {"headers": {"Strict-Transport-Security": None} if http else {}},
+        "http": {"headers": {"Strict-Transport-Security": None} if not config.settings.http else {}},
     }
 )
 
