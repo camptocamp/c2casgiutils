@@ -354,6 +354,12 @@ _Optional_, default value: `c2casgiutils`
 
 Application module name for logging
 
+### `C2C__HTTP`
+
+_Optional_, default value: `False`
+
+The application is running in HTTP mode to be used for development only (default: False)
+
 <!-- generated env. vars. end -->
 
 ## Installation
