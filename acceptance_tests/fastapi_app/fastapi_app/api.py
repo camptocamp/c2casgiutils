@@ -1,6 +1,5 @@
 import logging
-from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Protocol
 
 from c2casgiutils import broadcast
 from fastapi import FastAPI
@@ -31,7 +30,11 @@ class BroadcastResponse(BaseModel):
     result: list[dict[str, Any]] | None = None
 
 
-_echo_handler: Callable[[], Awaitable[list[dict[str, Any]] | None]] = None  # type: ignore[assignment]
+class _EchoHandlerProto(Protocol):
+    async def __call__(self, *, message: str) -> list[dict[str, Any]] | None: ...
+
+
+_echo_handler: _EchoHandlerProto = None  # type: ignore[assignment]
 
 
 @app.get("/broadcast")
@@ -40,13 +43,13 @@ async def send_broadcast() -> BroadcastResponse:
     Send a broadcast message to a channel.
     """
     assert _echo_handler is not None, "Broadcast handler is not set up"
-    return BroadcastResponse(result=await _echo_handler())
+    return BroadcastResponse(result=await _echo_handler(message="coucou"))
 
 
 # Create a handler that will receive broadcasts
-async def __echo_handler() -> dict[str, Any]:
+async def __echo_handler(*, message: str) -> dict[str, Any]:
     """Echo handler for broadcast messages."""
-    return {"message": "Broadcast echo"}
+    return {"message": "Broadcast echo: " + message}
 
 
 async def startup(main_app: FastAPI) -> None:
