@@ -104,12 +104,13 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
                     "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/",
                     "https://cdn.jsdelivr.net/npm/@sbrunner/",
                 ],
-                "script-src-attr": ["'unsafe-inline'"],
                 "style-src-elem": [
                     "'self'",
                     "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/",
                 ],
-                "style-src-attr": ["'unsafe-inline'"],
+                "style-src-attr": [
+                    "'unsafe-inline'",  # Required by Lit
+                ],
             },
         },
         "status_code": 200,
