@@ -13,6 +13,9 @@ from starlette.types import ASGIApp
 
 _LOGGER = logging.getLogger(__name__)
 
+# Content type matcher
+_HTML_CONTENT_TYPE_MATCH = r"^text/html(?:;|$)"
+
 Header = str | list[str] | dict[str, str] | dict[str, list[str]] | None
 
 # Placeholder that will be replaced with a generated nonce random value.
@@ -97,12 +100,14 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     },
     "localhost": {  # Special case for localhost
         "netloc_match": r"^localhost(:\d+)?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Strict-Transport-Security": None,
         },
     },
     "c2c": {  # Special case for c2c
         "path_match": r"^(.*/)?c2c/?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Content-Security-Policy": {
                 "default-src": ["'self'"],
@@ -124,6 +129,7 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     },
     "docs": {  # Special case for documentation
         "path_match": r"^(.*/)?docs/?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Content-Security-Policy": {
                 "default-src": [
@@ -146,10 +152,10 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
             },
             "Cross-Origin-Embedder-Policy": None,
         },
-        "status_code": 200,
     },
     "redoc": {  # Special case for Redoc
         "path_match": r"^(.*/)?redoc/?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Content-Security-Policy": {
                 "default-src": [
@@ -216,7 +222,9 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             path_match = re.compile(path_match_str) if path_match_str is not None else None
             content_type_match_str = config.get("content_type_match")
             content_type_match = (
-                re.compile(content_type_match_str) if content_type_match_str is not None else None
+                re.compile(content_type_match_str, re.IGNORECASE)
+                if content_type_match_str is not None
+                else None
             )
             headers = {}
             for header, value in config["headers"].items():
