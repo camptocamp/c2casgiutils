@@ -69,6 +69,8 @@ CSP_SELF = "'self'"
 CSP_NONE = "'none'"
 CSP_DATA = "data:"
 CSP_BLOB = "blob:"
+# Content type matcher
+HTML_CONTENT_TYPE_MATCH = r"^text/html(?:;|$)"
 
 Header = str | list[str] | dict[str, str] | dict[str, list[str]] | None
 
@@ -151,12 +153,14 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     },
     "localhost": {  # Special case for localhost
         "netloc_match": r"^localhost(:\d+)?$",
+        "content_type_match": HTML_CONTENT_TYPE_MATCH,
         "headers": {
             HEADER_STRICT_TRANSPORT_SECURITY: None,
         },
     },
     "c2c": {  # Special case for c2c
         "path_match": r"^(.*/)?c2c/?$",
+        "content_type_match": HTML_CONTENT_TYPE_MATCH,
         "headers": {
             HEADER_CONTENT_SECURITY_POLICY: {
                 CSP_DEFAULT_SRC: [CSP_SELF],
@@ -178,6 +182,7 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     },
     "docs": {  # Special case for documentation
         "path_match": r"^(.*/)?docs/?$",
+        "content_type_match": HTML_CONTENT_TYPE_MATCH,
         "headers": {
             HEADER_CONTENT_SECURITY_POLICY: {
                 CSP_DEFAULT_SRC: [
@@ -200,10 +205,10 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
             },
             HEADER_CROSS_ORIGIN_EMBEDDER_POLICY: None,
         },
-        "status_code": 200,
     },
     "redoc": {  # Special case for Redoc
         "path_match": r"^(.*/)?redoc/?$",
+        "content_type_match": HTML_CONTENT_TYPE_MATCH,
         "headers": {
             HEADER_CONTENT_SECURITY_POLICY: {
                 CSP_DEFAULT_SRC: [
@@ -270,7 +275,9 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             path_match = re.compile(path_match_str) if path_match_str is not None else None
             content_type_match_str = config.get("content_type_match")
             content_type_match = (
-                re.compile(content_type_match_str) if content_type_match_str is not None else None
+                re.compile(content_type_match_str, re.IGNORECASE)
+                if content_type_match_str is not None
+                else None
             )
             headers = {}
             for header, value in config["headers"].items():

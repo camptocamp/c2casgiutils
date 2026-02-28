@@ -491,7 +491,7 @@ async def test_dispatch_real_world_scenario():
     """Test a real-world scenario with CSP and security headers."""
 
     async def simple_app(scope, receive, send):
-        response = Response("Hello World")
+        response = Response("Hello World", media_type="text/html")
         await response(scope, receive, send)
 
     # Use default config which includes CSP and security headers
@@ -501,7 +501,7 @@ async def test_dispatch_real_world_scenario():
     request.base_url = urllib.parse.urlparse("http://example.com/")
     request.url = urllib.parse.urlparse("http://example.com/path")
 
-    mock_response = Response("Hello World")
+    mock_response = Response("Hello World", media_type="text/html")
     call_next = AsyncMock(return_value=mock_response)
 
     result = await middleware.dispatch(request, call_next)
