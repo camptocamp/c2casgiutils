@@ -1,3 +1,4 @@
+import binascii
 import re
 import urllib
 from unittest.mock import AsyncMock, MagicMock
@@ -8,6 +9,20 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from c2casgiutils.headers import ArmorHeaderMiddleware, _build_header
+
+
+class State:
+    """Simple state object for tests."""
+
+
+@pytest.fixture
+def mock_request():
+    """Create a mock request with a simple state object."""
+    request = MagicMock(spec=Request)
+    request.base_url = urllib.parse.urlparse("http://example.com/")
+    request.url = urllib.parse.urlparse("http://example.com/path")
+    request.state = State()
+    return request
 
 
 def test_string_value():
@@ -476,7 +491,7 @@ async def test_dispatch_real_world_scenario():
     """Test a real-world scenario with CSP and security headers."""
 
     async def simple_app(scope, receive, send):
-        response = Response("Hello World")
+        response = Response("Hello World", media_type="text/html")
         await response(scope, receive, send)
 
     # Use default config which includes CSP and security headers
@@ -486,7 +501,7 @@ async def test_dispatch_real_world_scenario():
     request.base_url = urllib.parse.urlparse("http://example.com/")
     request.url = urllib.parse.urlparse("http://example.com/path")
 
-    mock_response = Response("Hello World")
+    mock_response = Response("Hello World", media_type="text/html")
     call_next = AsyncMock(return_value=mock_response)
 
     result = await middleware.dispatch(request, call_next)
@@ -526,3 +541,320 @@ async def test_dispatch_header_value_assignment_bug_fix():
     # This test would fail if the bug where header = header instead of header = value exists
     assert result.headers["X-Test-Header"] == "correct-value"
     assert result.headers["X-Test-Header"] != "X-Test-Header"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_nonce_generation_and_replacement(mock_request):
+    """Test that nonce is generated and replaced in CSP header."""
+
+    async def simple_app(scope, receive, send):
+        response = Response("Hello World")
+        await response(scope, receive, send)
+
+    from c2casgiutils.headers import (
+        CSP_DEFAULT_SRC,
+        CSP_NONCE,
+        CSP_SCRIPT_SRC,
+        CSP_SELF,
+        HEADER_CONTENT_SECURITY_POLICY,
+    )
+
+    custom_config = {
+        "test": {
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
+                },
+            },
+        },
+    }
+    middleware = ArmorHeaderMiddleware(simple_app, custom_config)
+
+    mock_response = Response("Hello World")
+    call_next = AsyncMock(return_value=mock_response)
+
+    result = await middleware.dispatch(mock_request, call_next)
+
+    # Check that nonce was generated and set on request.state
+    assert hasattr(mock_request.state, "nonce")
+    nonce = mock_request.state.nonce
+    assert nonce is not None
+    assert len(nonce) > 0
+
+    # Check that CSP header contains the nonce
+    csp = result.headers[HEADER_CONTENT_SECURITY_POLICY]
+    assert f"'nonce-{nonce}'" in csp
+    assert CSP_NONCE not in csp  # Placeholder should be replaced
+
+
+@pytest.mark.asyncio
+async def test_dispatch_nonce_replacement_in_csp_report_only(mock_request):
+    """Test that nonce is replaced in Content-Security-Policy-Report-Only header."""
+
+    async def simple_app(scope, receive, send):
+        response = Response("Hello World")
+        await response(scope, receive, send)
+
+    from c2casgiutils.headers import (
+        CSP_DEFAULT_SRC,
+        CSP_NONCE,
+        CSP_SCRIPT_SRC,
+        CSP_SELF,
+        HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY,
+    )
+
+    custom_config = {
+        "test": {
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
+                },
+            },
+        },
+    }
+    middleware = ArmorHeaderMiddleware(simple_app, custom_config)
+
+    mock_response = Response("Hello World")
+    call_next = AsyncMock(return_value=mock_response)
+
+    result = await middleware.dispatch(mock_request, call_next)
+
+    # Check that nonce was generated
+    assert hasattr(mock_request.state, "nonce")
+    nonce = mock_request.state.nonce
+
+    # Check that CSP-Report-Only header contains the nonce
+    csp = result.headers[HEADER_CONTENT_SECURITY_POLICY_REPORT_ONLY]
+    assert f"'nonce-{nonce}'" in csp
+    assert CSP_NONCE not in csp
+
+
+@pytest.mark.asyncio
+async def test_dispatch_nonce_multiple_placeholders(mock_request):
+    """Test that multiple nonce placeholders are replaced correctly."""
+
+    async def simple_app(scope, receive, send):
+        response = Response("Hello World")
+        await response(scope, receive, send)
+
+    from c2casgiutils.headers import (
+        CSP_DEFAULT_SRC,
+        CSP_NONCE,
+        CSP_SCRIPT_SRC,
+        CSP_SELF,
+        CSP_STYLE_SRC,
+        HEADER_CONTENT_SECURITY_POLICY,
+    )
+
+    custom_config = {
+        "test": {
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
+                    CSP_STYLE_SRC: [CSP_SELF, CSP_NONCE],
+                },
+            },
+        },
+    }
+    middleware = ArmorHeaderMiddleware(simple_app, custom_config)
+
+    mock_response = Response("Hello World")
+    call_next = AsyncMock(return_value=mock_response)
+
+    result = await middleware.dispatch(mock_request, call_next)
+
+    # Check that nonce was generated
+    nonce = mock_request.state.nonce
+
+    # Check that all nonce placeholders are replaced
+    csp = result.headers[HEADER_CONTENT_SECURITY_POLICY]
+    assert csp.count(f"'nonce-{nonce}'") == 2  # Should appear twice
+    assert CSP_NONCE not in csp  # Placeholder should not remain
+
+
+@pytest.mark.asyncio
+async def test_dispatch_nonce_not_generated_when_not_needed(mock_request):
+    """Test that nonce is not generated when CSP doesn't include nonce placeholder."""
+
+    async def simple_app(scope, receive, send):
+        response = Response("Hello World")
+        await response(scope, receive, send)
+
+    from c2casgiutils.headers import (
+        CSP_DEFAULT_SRC,
+        CSP_SCRIPT_SRC,
+        CSP_SELF,
+        HEADER_CONTENT_SECURITY_POLICY,
+    )
+
+    custom_config = {
+        "test": {
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF],
+                },
+            },
+        },
+    }
+    middleware = ArmorHeaderMiddleware(simple_app, custom_config)
+
+    mock_response = Response("Hello World")
+    call_next = AsyncMock(return_value=mock_response)
+
+    await middleware.dispatch(mock_request, call_next)
+
+    # Check that nonce was not generated
+    assert not hasattr(mock_request.state, "nonce")
+
+
+@pytest.mark.asyncio
+async def test_dispatch_nonce_uniqueness():
+    """Test that each request gets a unique nonce."""
+
+    async def simple_app(scope, receive, send):
+        response = Response("Hello World")
+        await response(scope, receive, send)
+
+    from c2casgiutils.headers import (
+        CSP_DEFAULT_SRC,
+        CSP_NONCE,
+        CSP_SCRIPT_SRC,
+        CSP_SELF,
+        HEADER_CONTENT_SECURITY_POLICY,
+    )
+
+    custom_config = {
+        "test": {
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
+                },
+            },
+        },
+    }
+    middleware = ArmorHeaderMiddleware(simple_app, custom_config)
+
+    nonces = []
+    for _ in range(5):
+        request = MagicMock(spec=Request)
+        request.base_url = urllib.parse.urlparse("http://example.com/")
+        request.url = urllib.parse.urlparse("http://example.com/path")
+        request.state = State()
+
+        mock_response = Response("Hello World")
+        call_next = AsyncMock(return_value=mock_response)
+
+        await middleware.dispatch(request, call_next)
+        nonces.append(request.state.nonce)
+
+    # Check that all nonces are unique
+    assert len(nonces) == len(set(nonces))
+
+
+@pytest.mark.asyncio
+async def test_dispatch_nonce_with_multiple_configs(mock_request):
+    """Test nonce generation stops after first match but both configs are applied."""
+
+    async def simple_app(scope, receive, send):
+        response = Response("Hello World")
+        await response(scope, receive, send)
+
+    from c2casgiutils.headers import (
+        CSP_DEFAULT_SRC,
+        CSP_NONCE,
+        CSP_SCRIPT_SRC,
+        CSP_SELF,
+        HEADER_CONTENT_SECURITY_POLICY,
+        HEADER_X_CONTENT_TYPE_OPTIONS,
+    )
+
+    custom_config = {
+        "first": {
+            "order": 1,
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
+                },
+            },
+        },
+        "second": {
+            "order": 2,
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
+                },
+                HEADER_X_CONTENT_TYPE_OPTIONS: "nosniff",
+            },
+        },
+    }
+    middleware = ArmorHeaderMiddleware(simple_app, custom_config)
+
+    mock_response = Response("Hello World")
+    call_next = AsyncMock(return_value=mock_response)
+
+    result = await middleware.dispatch(mock_request, call_next)
+
+    # Should only generate one nonce
+    nonce = mock_request.state.nonce
+    assert nonce is not None
+
+    # Both headers should use the same nonce
+    csp = result.headers[HEADER_CONTENT_SECURITY_POLICY]
+    assert f"'nonce-{nonce}'" in csp
+
+    # Verify second config was also applied
+    assert result.headers[HEADER_X_CONTENT_TYPE_OPTIONS] == "nosniff"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_nonce_base64_encoding(mock_request):
+    """Test that nonce is properly base64 encoded."""
+
+    async def simple_app(scope, receive, send):
+        response = Response("Hello World")
+        await response(scope, receive, send)
+
+    import base64
+
+    from c2casgiutils.headers import (
+        CSP_DEFAULT_SRC,
+        CSP_NONCE,
+        CSP_SCRIPT_SRC,
+        CSP_SELF,
+        HEADER_CONTENT_SECURITY_POLICY,
+    )
+
+    custom_config = {
+        "test": {
+            "headers": {
+                HEADER_CONTENT_SECURITY_POLICY: {
+                    CSP_DEFAULT_SRC: [CSP_SELF],
+                    CSP_SCRIPT_SRC: [CSP_SELF, CSP_NONCE],
+                },
+            },
+        },
+    }
+    middleware = ArmorHeaderMiddleware(simple_app, custom_config)
+
+    mock_response = Response("Hello World")
+    call_next = AsyncMock(return_value=mock_response)
+
+    await middleware.dispatch(mock_request, call_next)
+
+    nonce = mock_request.state.nonce
+
+    # Verify it's valid base64
+    try:
+        base64.b64decode(nonce)
+        valid_base64 = True
+    except (ValueError, binascii.Error):
+        valid_base64 = False
+
+    assert valid_base64, "Nonce should be valid base64"
