@@ -3,7 +3,7 @@ import logging
 import secrets
 import urllib.parse
 from enum import Enum
-from typing import Annotated, Any, TypedDict
+from typing import Annotated, Any
 
 import aiohttp
 import jwt
@@ -21,13 +21,13 @@ api_key_query = APIKeyQuery(name="secret", auto_error=False)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-class AuthConfig(TypedDict, total=False):
+class AuthConfig(BaseModel):
     """Configuration of the authentication."""
 
     # The repository to check access to (<organization>/<repository>).
-    github_repository: str | None
+    github_repository: str | None = None
     # The type of access to check (admin|push|pull).
-    github_access_type: str | None
+    github_access_type: str | None = None
 
 
 ADMIN_AUTH_CONFIG = AuthConfig(
@@ -246,14 +246,14 @@ async def check_access_config(
     async with (
         aiohttp.ClientSession() as session,
         session.get(
-            f"{repo_url}/{auth_config.get('github_repository')}",
+            f"{repo_url}/{auth_config.github_repository}",
             headers=headers,
         ) as response,
     ):
         repository = await response.json()
         return not (
             "permissions" not in repository
-            or repository["permissions"][auth_config.get("github_access_type")] is not True
+            or repository["permissions"][auth_config.github_access_type] is not True
         )
 
 

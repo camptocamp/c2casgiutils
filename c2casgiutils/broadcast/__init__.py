@@ -3,13 +3,15 @@
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable, Coroutine
-from typing import Any, Literal, ParamSpec, TypeVar, cast, overload
+from typing import Any, Literal, ParamSpec, TypeVar, cast, get_type_hints, overload
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 import c2casgiutils.broadcast.redis
 from c2casgiutils import config, redis_utils
 from c2casgiutils.broadcast import interface, local
+from c2casgiutils.broadcast.types import BroadcastResponse
 
 _LOG = logging.getLogger(__name__)
 
@@ -84,27 +86,81 @@ async def unsubscribe(channel: str) -> None:
     await _get().unsubscribe(channel)
 
 
+class MissingAnswer:
+    """Result placeholder for a missing answer when expect_answers is True, can happened with Redis."""
+
+
 async def broadcast(
     channel: str,
     params: dict[str, Any] | None = None,
     expect_answers: bool = False,
     timeout: float = 10,
-) -> list[Any] | None:
+) -> list[BroadcastResponse[Any] | MissingAnswer] | None:
     """
     Broadcast a message to the given channel.
 
     If answers are expected, it will wait up to "timeout" seconds to get all the answers.
     """
-    return await _get(need_init=True).broadcast(
-        channel,
-        params if params is not None else {},
-        expect_answers,
-        timeout,
+    responses = await _get(need_init=True).broadcast(
+        channel, params if params is not None else {}, expect_answers, timeout
     )
+    if responses is None:
+        return None
+
+    return [
+        BroadcastResponse(**response) if response is not None else MissingAnswer() for response in responses
+    ]
 
 
 _DecoratorArgs = ParamSpec("_DecoratorArgs")
 _DecoratorReturn = TypeVar("_DecoratorReturn")
+
+
+def _serialize_params(params: dict[str, Any]) -> dict[str, Any]:
+    """Serialize params, converting Pydantic models to dicts."""
+    result = {}
+    for key, value in params.items():
+        if isinstance(value, BaseModel):
+            result[key] = value.model_dump(mode="json")
+        else:
+            result[key] = value
+    return result
+
+
+def _deserialize_payload(payload: Any, return_type: Any) -> Any:
+    """Deserialize payload if return_type is a Pydantic model."""
+    if return_type is None or not isinstance(return_type, type):
+        return payload
+
+    if isinstance(payload, dict) and issubclass(return_type, BaseModel):
+        return return_type.model_validate(payload)
+
+    return payload
+
+
+def _deserialize_kwargs(kwargs: dict[str, Any], func: Callable[..., Any]) -> dict[str, Any]:
+    """Deserialize kwargs if their types are Pydantic models."""
+    hints = get_type_hints(func)
+
+    result: dict[str, Any] = {}
+    for key, value in kwargs.items():
+        if key in hints:
+            param_type = hints[key]
+            if isinstance(value, dict) and isinstance(param_type, type) and issubclass(param_type, BaseModel):
+                result[key] = param_type.model_validate(value)
+            else:
+                result[key] = value
+        else:
+            result[key] = value
+
+    return result
+
+
+def _get_return_type(func: Callable[..., Any]) -> Any:
+    """Extract the return type from a function, handling Awaitable types."""
+    # Get the return type from the decorated function
+    hints = get_type_hints(func)
+    return hints.get("return")
 
 
 # For expect_answers=True
@@ -115,7 +171,9 @@ async def decorate(
     *,
     expect_answers: Literal[True],
     timeout: float = 10,
-) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[_DecoratorReturn]]]: ...
+) -> Callable[
+    _DecoratorArgs, Coroutine[Any, Any, list[BroadcastResponse[_DecoratorReturn] | MissingAnswer]]
+]: ...
 
 
 # For expect_answers=False
@@ -144,7 +202,9 @@ async def decorate(
     channel: str | None = None,
     expect_answers: bool = False,
     timeout: float = 10,
-) -> Callable[_DecoratorArgs, Coroutine[Any, Any, list[_DecoratorReturn] | None]]:
+) -> Callable[
+    _DecoratorArgs, Coroutine[Any, Any, list[BroadcastResponse[_DecoratorReturn] | MissingAnswer] | None]
+]:
     """
     Decorate function will be called through the broadcast functionality.
 
@@ -156,12 +216,26 @@ async def decorate(
     async def wrapper(
         *args: _DecoratorArgs.args,
         **kwargs: _DecoratorArgs.kwargs,
-    ) -> list[_DecoratorReturn] | None:
+    ) -> list[BroadcastResponse[_DecoratorReturn] | MissingAnswer] | None:
         """Wrap the function to call the decorated function."""
         assert not args, "Broadcast decorator should not be called with positional arguments"
+        # Serialize Pydantic models in kwargs
+        serialized_kwargs = _serialize_params(kwargs)
         if expect_answers:
-            return await broadcast(_channel, params=kwargs, expect_answers=True, timeout=timeout)
-        await broadcast(_channel, params=kwargs, expect_answers=False, timeout=timeout)
+            responses = await broadcast(
+                _channel, params=serialized_kwargs, expect_answers=True, timeout=timeout
+            )
+            if responses is None:
+                return None
+
+            return_type = _get_return_type(func)
+
+            # Deserialize payloads in responses
+            for response in responses:
+                if isinstance(response, BroadcastResponse):
+                    response.payload = _deserialize_payload(response.payload, return_type)
+            return cast("list[BroadcastResponse[_DecoratorReturn] | MissingAnswer]", responses)
+        await broadcast(_channel, params=serialized_kwargs, expect_answers=False, timeout=timeout)
         return None
 
     async def async_wrapper(
@@ -172,9 +246,20 @@ async def decorate(
         assert not args, "Broadcast decorator should not be called with positional arguments"
         result = func(*args, **kwargs)
         if asyncio.iscoroutine(result):
-            return await cast("Awaitable[_DecoratorReturn]", result)
+            return cast("_DecoratorReturn", await result)
         return cast("_DecoratorReturn", result)
 
-    await subscribe(_channel, async_wrapper)
+    async def subscribe_func(
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        # Deserialize kwargs if they should contain Pydantic models
+        deserialized_kwargs = _deserialize_kwargs(kwargs, func)
+        result = await async_wrapper(*args, **deserialized_kwargs)
+        if isinstance(result, BaseModel):
+            return result.model_dump(mode="json")
+        return result
+
+    await subscribe(_channel, subscribe_func)
 
     return wrapper
