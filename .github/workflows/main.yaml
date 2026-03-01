@@ -35,7 +35,7 @@ jobs:
       - run: pre-commit run --all-files --color=always
       - run: git diff --exit-code --patch > /tmp/pre-commit.patch; git diff --color; git reset --hard || true
         if: failure()
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: Apply pre-commit fix.patch
           path: /tmp/pre-commit.patch
@@ -71,7 +71,7 @@ jobs:
       - run: git diff --exit-code --color
       - run: git diff --patch > /tmp/settings-doc.patch; git reset --hard || true
         if: failure()
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: Update settings documentation.patch
           path: /tmp/settings-doc.patch
@@ -96,7 +96,7 @@ jobs:
       - run: c2cciutils-docker-logs
         if: always()
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: Acceptance-tests
           path: acceptance_tests/fastapi_app/results
@@ -136,7 +136,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: git diff --exit-code --patch > /tmp/dpkg-versions.patch; git diff --color; git reset --hard || true
         if: failure()
-      - uses: actions/upload-artifact@v6.0.0
+      - uses: actions/upload-artifact@v7.0.0
         with:
           name: Update dpkg versions list.patch
           path: /tmp/dpkg-versions.patch
