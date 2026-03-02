@@ -209,7 +209,7 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             path_match = re.compile(path_match_str) if path_match_str is not None else None
             headers = {}
             for header, value in config["headers"].items():
-                if header == "Content-Security-Policy":
+                if header in ("Content-Security-Policy", "Content-Security-Policy-Report-Only"):
                     headers[header] = _build_header(value, dict_separator=" ", final_separator=True)
                 elif header == "Permissions-Policy":
                     headers[header] = _build_header(value, separator=", ")
