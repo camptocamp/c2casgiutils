@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, FastAPI, Query
 from pydantic import BaseModel
 
 from c2casgiutils import auth, broadcast, config, redis_utils
+from c2casgiutils.broadcast import MissingAnswer
+from c2casgiutils.broadcast.types import BroadcastResponse
 
 router = APIRouter()
 
@@ -37,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 class _SetLevelFunction(Protocol):
     """Set the logging level for a given logger name."""
 
-    async def __call__(self, name: str, level: str) -> list[bool]: ...
+    async def __call__(self, name: str, level: str) -> list[BroadcastResponse[bool] | MissingAnswer]: ...
 
 
 _set_level: _SetLevelFunction
@@ -95,7 +97,7 @@ async def c2c_logging_overrides(
     return OverridesResponse(overrides=[e async for e in _list_overrides()])
 
 
-async def __set_level(name: str, level: str) -> bool:
+def __set_level(name: str, level: str) -> bool:
     logging.getLogger(name).setLevel(level)
     return True
 
