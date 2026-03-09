@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    environment:
+      - C2C__REDIS__URL=redis://redis:6379/0
+      - C2C__HTTP=True
+
+  redis:
+    image: redis:8.6.1
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes

@@ -1,0 +1,29 @@
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+# See: https://docs.astral.sh/ruff/rules/
+select = []
+ignore = ["S101", "S113"]
+extend-select = ["UP", "I", "S", "B", "G", "DTZ", "EXE", "FAST", "ASYNC", "T20", "TC"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[project]
+name = "{{cookiecutter.project_slug}}"
+version = "0.1.0"
+description = "{{cookiecutter.project_description}}"
+authors = [{name = "Camptocamp", email = "info@camptocamp.com"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+	"c2casgiutils[all]",
+	"fastapi[standard]",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff"
+]

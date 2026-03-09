@@ -15,13 +15,13 @@ from prometheus_client import start_http_server
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
-from fastapi_app import api
+from {{cookiecutter.project_slug}} import api
 
 _LOGGER = logging.getLogger(__name__)
 
 # Initialize Sentry if the URL is provided
 if config.settings.sentry.dsn or "SENTRY_DSN" in os.environ:
-    _LOGGER.info("Sentry is enabled with URL: %s", config.settings.sentry.dsn or os.environ.get("SENTRY_DSN"))
+    _LOGGER.info("Sentry is enabled")
     sentry_sdk.init(
         **{k: v for k, v in config.settings.sentry.model_dump().items() if v is not None and k != "tags"}
     )
@@ -46,7 +46,7 @@ async def _lifespan(main_app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # Core Application Instance
-app = FastAPI(title="fastapi_app API", lifespan=_lifespan)
+app = FastAPI(title="{{cookiecutter.project_slug}}", lifespan=_lifespan)
 
 
 # Add TrustedHostMiddleware (should be first)
@@ -66,14 +66,15 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.add_middleware(
     headers.ArmorHeaderMiddleware,
-    headers_config={"http": {"headers": {"Strict-Transport-Security": None}}} if config.settings.http else {},
+    headers_config={"http": {"headers": {"Strict-Transport-Security": None}}}
+    if config.settings.http
+    else {},
 )
 
 
@@ -85,7 +86,6 @@ class RootResponse(BaseModel):
 
 # Add Health Checks
 health_checks.FACTORY.add(health_checks.Redis(tags=["liveness", "redis", "all"]))
-health_checks.FACTORY.add(health_checks.Wrong(tags=["wrong", "all"]))
 
 
 @app.get("/")

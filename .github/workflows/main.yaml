@@ -93,6 +93,9 @@ jobs:
       - name: Test FastAPI app
         run: make acceptance_pytest
 
+      - name: Checks scaffold
+        run: make scaffold_build
+
       - run: c2cciutils-docker-logs
         if: always()
 
