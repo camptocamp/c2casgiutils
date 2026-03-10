@@ -581,7 +581,7 @@ You can configure headers based on request patterns:
 ```python
 from c2casgiutils.headers import ArmorHeaderMiddleware
 
-custom_config = {
+headers_config = {
     "api_endpoints": {
         "path_match": r"^/api/.*",  # Regex pattern for paths
         "headers": {
@@ -621,7 +621,7 @@ custom_config = {
     }
 }
 
-app.add_middleware(ArmorHeaderMiddleware, headers_config=custom_config)
+app.add_middleware(ArmorHeaderMiddleware, headers_config=headers_config)
 ```
 
 #### Header Value Types
@@ -629,7 +629,7 @@ app.add_middleware(ArmorHeaderMiddleware, headers_config=custom_config)
 Headers support multiple value types:
 
 ```python
-headers = {
+headers_config = {
     # String value
     "X-Custom": "value",
 
@@ -649,6 +649,56 @@ headers = {
     # Remove header
     "Unwanted-Header": None
 }
+```
+
+#### Using Nonce with Content-Security-Policy
+
+For dynamic content that requires inline scripts or styles, using nonces is more secure than `'unsafe-inline'`. A nonce is a random value that must match between the CSP header and the `script`/`style` tags.
+
+```python
+from c2casgiutils import headers
+
+# Configure CSP with nonce
+custom_config = {
+    "my_page": {
+        "path_match": r"^/my-page/?",
+        "headers": {
+            "Content-Security-Policy": {
+                "default-src": ["'self'"],
+                "script-src": ["'self'", headers.CSP_NONCE],
+                "style-src": ["'self'", headers.CSP_NONCE],
+            }
+        }
+    }
+}
+```
+
+In your endpoint, pass the nonce to the template
+
+```python
+from fastapi.templating import Jinja2Templates
+
+# Configure templates
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+return templates.TemplateResponse(
+    "index.html.jinja2",
+    {
+        "request": request,
+        "nonce": getattr(request.state, "nonce", ""),
+    },
+)
+```
+
+In your HTML template, add the nonce attribute
+
+```html
+<script nonce="{{ nonce }}">
+  ...
+</script>
+<style nonce="{{ nonce }}">
+  ...
+</style>
 ```
 
 #### Special Localhost Handling
@@ -694,6 +744,8 @@ This allows for fine-grained control over which headers are applied based on the
 With the default CSP your html application will not work, to make it working without impacting the security Of the other pages you should add in the `headers_config` something like this:
 
 ```python
+from c2casgiutils import headers
+
 {
     "my_page": {
         "path_match": r"^your-path/?",

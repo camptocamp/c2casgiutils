@@ -1,5 +1,7 @@
+import base64
 import logging
 import re
+import secrets
 from collections.abc import Awaitable, Callable, Collection
 from typing import TypedDict
 
@@ -12,6 +14,9 @@ from starlette.types import ASGIApp
 _LOGGER = logging.getLogger(__name__)
 
 Header = str | list[str] | dict[str, str] | dict[str, list[str]] | None
+
+# Placeholder that will be replaced with a generated nonce random value.
+CSP_NONCE = "'nonce'"
 
 
 class HeaderMatcher(TypedDict, total=False):
@@ -209,7 +214,7 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             path_match = re.compile(path_match_str) if path_match_str is not None else None
             headers = {}
             for header, value in config["headers"].items():
-                if header == "Content-Security-Policy":
+                if header in ("Content-Security-Policy", "Content-Security-Policy-Report-Only"):
                     headers[header] = _build_header(value, dict_separator=" ", final_separator=True)
                 elif header == "Permissions-Policy":
                     headers[header] = _build_header(value, separator=", ")
@@ -233,18 +238,32 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         """Dispatch the request and add headers to the response."""
-        response = await call_next(request)
-
         netloc = request.base_url.netloc
         path = request.url.path[len(request.base_url.path) :]
         _LOGGER.debug("Processing headers for request netloc: '%s', path: '%s'.", netloc, path)
 
+        used_config = []
+        nonce: str | None = None
         for config in self.headers_config:
             if config.netloc_match and not config.netloc_match.match(netloc):
                 continue
             if config.path_match and not config.path_match.match(path):
                 continue
+            if config.methods is not None and request.method not in config.methods:
+                continue
+            used_config.append(config)
+            if nonce is None:
+                for header in ("Content-Security-Policy", "Content-Security-Policy-Report-Only"):
+                    header_value = config.headers.get(header)
+                    if header_value is not None and CSP_NONCE in header_value:
+                        # Generate a new nonce
+                        nonce = base64.b64encode(secrets.token_bytes(16)).decode("utf-8")
+                        request.state.nonce = nonce
+                        break
 
+        response = await call_next(request)
+
+        for config in used_config:
             if config.status_code is not None:
                 if isinstance(config.status_code, tuple):
                     if (
@@ -254,8 +273,6 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
                         continue
                 elif response.status_code != config.status_code:
                     continue
-            if config.methods is not None and request.method not in config.methods:
-                continue
             _LOGGER.debug(
                 "Adding headers from '%s' on path '%s'.",
                 config.name,
@@ -266,6 +283,21 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
                     if header in response.headers:
                         del response.headers[header]
                 else:
-                    response.headers[header] = value
+                    used_value = value
+                    if (
+                        header in ("Content-Security-Policy", "Content-Security-Policy-Report-Only")
+                        and CSP_NONCE in value
+                    ):
+                        if nonce is None:
+                            _LOGGER.warning(
+                                "CSP nonce placeholder found in header '%s', but nonce was not generated; "
+                                "skipping header for this response.",
+                                header,
+                            )
+                            continue
+                        # Replace nonce placeholders
+                        used_value = used_value.replace(CSP_NONCE, f"'nonce-{nonce}'")
+
+                    response.headers[header] = used_value
 
         return response
