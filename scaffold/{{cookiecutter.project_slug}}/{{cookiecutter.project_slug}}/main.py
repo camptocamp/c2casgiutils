@@ -16,6 +16,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
 from {{cookiecutter.project_slug}} import api
+from {{cookiecutter.project_slug}}.config import settings as app_settings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ if config.settings.sentry.dsn or "SENTRY_DSN" in os.environ:
 async def _lifespan(main_app: FastAPI) -> AsyncGenerator[None, None]:
     """Handle application lifespan events."""
 
-    _LOGGER.info("Starting the application")
+    _LOGGER.info("Starting the application (debug=%s)", app_settings.debug)
     await c2casgiutils.startup(main_app)
     await api.startup(main_app)
 

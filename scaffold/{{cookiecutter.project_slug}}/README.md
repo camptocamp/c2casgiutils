@@ -29,6 +29,7 @@ docker compose up --build --detach
 {{cookiecutter.project_slug}}/
 ├── {{cookiecutter.project_slug}}/  # Application source code
 │   ├── __init__.py
+│   ├── config.py         # Application environment variables (pydantic-settings)
 │   ├── main.py           # FastAPI app with middleware and health checks
 │   └── api.py            # API routes
 ├── Dockerfile            # Docker build
@@ -40,10 +41,28 @@ docker compose up --build --detach
 
 ## Configuration
 
-The application is configured via environment variables using the `C2C__` prefix.
-See the [c2casgiutils documentation](https://github.com/camptocamp/c2casgiutils) for all available options.
+### Application settings (`{{cookiecutter.project_slug|upper}}__` prefix)
 
-Key configuration options:
+Application-specific settings are defined in `{{cookiecutter.project_slug}}/config.py` using
+[pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
+Variables use the prefix `{{cookiecutter.project_slug|upper}}__`, with `__` as the nested delimiter.
+
+| Environment Variable | Description  | Default |
+| ----------------------------------------------- | ----------------- | ------- |
+| `{{cookiecutter.project_slug|upper}}\_\_DEBUG` | Enable debug mode | `False` |
+
+Add your own settings by extending the `Settings` class in `config.py`:
+
+```python
+my_setting: Annotated[str, Field(description="My setting")] = "default"
+```
+
+Then set the environment variable `{{cookiecutter.project_slug|upper}}__MY_SETTING=value`.
+
+### c2casgiutils settings (`C2C__` prefix)
+
+The application is also configured via environment variables using the `C2C__` prefix.
+See the [c2casgiutils documentation](https://github.com/camptocamp/c2casgiutils) for all available options.
 
 | Environment Variable               | Description                       | Default                    |
 | ---------------------------------- | --------------------------------- | -------------------------- |
