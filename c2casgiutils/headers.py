@@ -13,6 +13,9 @@ from starlette.types import ASGIApp
 
 _LOGGER = logging.getLogger(__name__)
 
+# Content type matcher
+_HTML_CONTENT_TYPE_MATCH = r"^text/html(?:;|$)"
+
 Header = str | list[str] | dict[str, str] | dict[str, list[str]] | None
 
 # Placeholder that will be replaced with a generated nonce random value.
@@ -24,6 +27,7 @@ class HeaderMatcher(TypedDict, total=False):
 
     netloc_match: str | None
     path_match: str | None
+    content_type_match: str | None
     headers: dict[str, Header]
     status_code: int | tuple[int, int] | None
     order: int
@@ -36,6 +40,7 @@ class _HeaderMatcherBuild(BaseModel):
     name: str
     netloc_match: re.Pattern[str] | None
     path_match: re.Pattern[str] | None
+    content_type_match: re.Pattern[str] | None
     headers: dict[str, str | None]
     status_code: int | tuple[int, int] | None
     methods: list[str] | None
@@ -95,12 +100,14 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     },
     "localhost": {  # Special case for localhost
         "netloc_match": r"^localhost(:\d+)?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Strict-Transport-Security": None,
         },
     },
     "c2c": {  # Special case for c2c
         "path_match": r"^(.*/)?c2c/?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Content-Security-Policy": {
                 "default-src": ["'self'"],
@@ -122,6 +129,7 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
     },
     "docs": {  # Special case for documentation
         "path_match": r"^(.*/)?docs/?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Content-Security-Policy": {
                 "default-src": [
@@ -144,10 +152,10 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
             },
             "Cross-Origin-Embedder-Policy": None,
         },
-        "status_code": 200,
     },
     "redoc": {  # Special case for Redoc
         "path_match": r"^(.*/)?redoc/?$",
+        "content_type_match": _HTML_CONTENT_TYPE_MATCH,
         "headers": {
             "Content-Security-Policy": {
                 "default-src": [
@@ -212,6 +220,12 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             netloc_match = re.compile(netloc_match_str) if netloc_match_str is not None else None
             path_match_str = config.get("path_match")
             path_match = re.compile(path_match_str) if path_match_str is not None else None
+            content_type_match_str = config.get("content_type_match")
+            content_type_match = (
+                re.compile(content_type_match_str, re.IGNORECASE)
+                if content_type_match_str is not None
+                else None
+            )
             headers = {}
             for header, value in config["headers"].items():
                 if header in ("Content-Security-Policy", "Content-Security-Policy-Report-Only"):
@@ -225,6 +239,7 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
                     name=name,
                     netloc_match=netloc_match,
                     path_match=path_match,
+                    content_type_match=content_type_match,
                     headers=headers,
                     status_code=config.get("status_code"),
                     methods=config.get("methods"),
@@ -272,6 +287,10 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
                     ):
                         continue
                 elif response.status_code != config.status_code:
+                    continue
+            if config.content_type_match is not None:
+                content_type = response.headers.get("Content-Type")
+                if content_type is None or not config.content_type_match.match(content_type):
                     continue
             _LOGGER.debug(
                 "Adding headers from '%s' on path '%s'.",
