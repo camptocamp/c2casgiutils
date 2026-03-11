@@ -45,10 +45,10 @@ The application will be available at:
 Ensure that scaffold in `scaffold/` is updated with the changes in the rest of the codebase.
 
 Notes:
+
 - the scaffold to be acceptable by everyone didn't uses Poetry to let the final user ti use other tools like `uv`.
 - the scaffold is an empty application he has not the views with the broadcast like the application used in the
   acceptance tests.
-
 
 ## Documentation
 
