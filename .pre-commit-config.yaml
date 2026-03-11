@@ -8,6 +8,8 @@ repos:
         exclude: |-
           (?x)^(
             c2casgiutils/tools/templates/index\.html
+            |scaffold/{{cookiecutter.project_slug}}/README\.md
+            |scaffold/{{cookiecutter.project_slug}}/logging\.yaml
           )$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -19,9 +21,21 @@ repos:
           )$
       - id: check-merge-conflict
       - id: check-ast
+        exclude: |-
+          (?x)^(
+            scaffold/.*
+          )$
       - id: debug-statements
+        exclude: |-
+          (?x)^(
+            scaffold/.*
+          )$
       - id: check-toml
       - id: check-yaml
+        exclude: |-
+          (?x)^(
+            scaffold/.*
+          )$
       - id: check-json
       - id: end-of-file-fixer
       - id: trailing-whitespace
@@ -33,6 +47,10 @@ repos:
       - id: poetry2-lock
         additional_dependencies:
           - poetry==2.3.2 # pypi
+        exclude: |-
+          (?x)^(
+            scaffold/.*
+          )$
       - id: canonicalize
       - id: prospector-to-ruff
         additional_dependencies:
@@ -76,6 +94,10 @@ repos:
       - id: ruff-format
         args:
           - --line-length=110
+        exclude: |-
+          (?x)^(
+            scaffold/.*
+          )$
   - repo: https://github.com/prospector-dev/prospector
     rev: v1.18.0
     hooks:
@@ -98,6 +120,7 @@ repos:
             |(^|/)test_[_a-zA-Z0-9]+.py$
             |(^|/)[_a-zA-Z0-9]+_tests?.py$
             |(^|/)tests?.py$
+            |scaffold/.*
           )
       - id: prospector
         args:
@@ -107,6 +130,10 @@ repos:
           - --profile=utils:pre-commit
         additional_dependencies:
           - prospector-profile-utils==1.27.0 # pypi
+        exclude: |-
+          (?x)^(
+            scaffold/.*
+          )$
   - repo: https://github.com/sbrunner/jsonschema-validator
     rev: 1.0.0
     hooks:

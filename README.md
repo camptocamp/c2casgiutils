@@ -362,6 +362,26 @@ The application is running in HTTP mode to be used for development only (default
 
 <!-- generated env. vars. end -->
 
+## Scaffold
+
+The repository provides a [Cookiecutter](https://cookiecutter.readthedocs.io/) template for
+bootstrapping a new FastAPI application with `c2casgiutils`:
+
+```bash
+pip install cookiecutter
+cookiecutter https://github.com/camptocamp/c2casgiutils --directory scaffold
+```
+
+Cookiecutter will prompt for the project name (`project_slug`) and description, then generate a
+ready-to-use project directory. Start the application with:
+
+```bash
+cd <project_slug>
+docker compose up --build
+```
+
+See [`scaffold/README.md`](scaffold/README.md) for the full setup guide.
+
 ## Installation
 
 ```bash

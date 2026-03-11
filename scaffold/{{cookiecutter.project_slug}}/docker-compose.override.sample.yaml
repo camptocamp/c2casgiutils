@@ -1,0 +1,16 @@
+services:
+  app:
+    command:
+      - uvicorn
+      - '{{cookiecutter.project_slug}}.main:app'
+      - --host=0.0.0.0
+      - --port=8080
+      - --log-config=logging.yaml
+      - --reload
+      - --reload-dir=/venv/lib/python3.13/site-packages/
+      - '--reload-include={{cookiecutter.project_slug}}/**/*.py'
+      - --reload-include=c2casgiutils/**/*.py
+
+    volumes:
+      - './{{cookiecutter.project_slug}}:/venv/lib/python3.13/site-packages/{{cookiecutter.project_slug}}'
+      # - '../c2casgiutils:/venv/lib/python3.13/site-packages/c2casgiutils'
