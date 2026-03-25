@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable, Coroutine
 from typing import Any, Literal, ParamSpec, TypeVar, cast, get_type_hints, overload
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 import c2casgiutils.broadcast.redis
 from c2casgiutils import config, redis_utils
@@ -136,7 +136,17 @@ def _deserialize_params(kwargs: dict[str, Any], func: Callable[..., Any]) -> dic
         if key in hints:
             param_type = hints[key]
             if isinstance(value, dict) and isinstance(param_type, type) and issubclass(param_type, BaseModel):
-                result[key] = param_type.model_validate(value)
+                try:
+                    result[key] = param_type.model_validate(value)
+                except ValidationError:
+                    _LOG.error(
+                        "Failed to deserialize parameter '%s' into %s: %s",
+                        key,
+                        param_type,
+                        value,
+                        exc_info=True,
+                    )
+                    raise
             else:
                 result[key] = value
         else:
@@ -158,7 +168,11 @@ def _deserialize_payload(payload: Any, return_type: Any) -> Any:
         return payload
 
     if isinstance(payload, dict) and issubclass(return_type, BaseModel):
-        return return_type.model_validate(payload)
+        try:
+            return return_type.model_validate(payload)
+        except ValidationError:
+            _LOG.error("Failed to deserialize payload into %s: %s", return_type, payload, exc_info=True)
+            raise
 
     return payload
 
