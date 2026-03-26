@@ -54,6 +54,10 @@ app.add_middleware(
     allowed_hosts=["*"],  # Configure with specific hosts in production
 )
 
+# Redirect HTTP to HTTPS (except for localhost, so Kubernetes health checks work)
+if not config.settings.http:
+    app.add_middleware(headers.HTTPSRedirectMiddleware)
+
 # Add GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 

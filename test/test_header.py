@@ -6,9 +6,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.routing import Route
+from starlette.testclient import TestClient
+from starlette.responses import PlainTextResponse, Response
 
-from c2casgiutils.headers import ArmorHeaderMiddleware, _build_header
+from c2casgiutils.headers import ArmorHeaderMiddleware, HTTPSRedirectMiddleware, _build_header
 
 
 class State:
@@ -813,3 +815,49 @@ async def test_dispatch_nonce_base64_encoding(mock_request):
         valid_base64 = False
 
     assert valid_base64, "Nonce should be valid base64"
+
+
+# Tests for HTTPSRedirectMiddleware
+
+
+def _make_app():
+    """Create a simple test app wrapped with HTTPSRedirectMiddleware."""
+
+    def homepage(request):
+        return PlainTextResponse("OK")
+
+    inner = Starlette(routes=[Route("/", homepage)])
+    return HTTPSRedirectMiddleware(inner)
+
+
+def test_https_redirect_middleware_localhost_no_redirect():
+    """Requests from localhost should pass through without redirect."""
+    app = _make_app()
+    client = TestClient(app, base_url="http://localhost", follow_redirects=False)
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+def test_https_redirect_middleware_localhost_with_port_no_redirect():
+    """Requests from localhost:port should pass through without redirect."""
+    app = _make_app()
+    client = TestClient(app, base_url="http://localhost:8080", follow_redirects=False)
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+def test_https_redirect_middleware_external_host_redirects():
+    """Requests from non-localhost hosts should be redirected to HTTPS."""
+    app = _make_app()
+    client = TestClient(app, base_url="http://example.com", follow_redirects=False)
+    response = client.get("/")
+    assert response.status_code == 301
+    assert response.headers["location"] == "https://example.com/"
+
+
+def test_https_redirect_middleware_already_https_no_redirect():
+    """Requests already using HTTPS should not be redirected."""
+    app = _make_app()
+    client = TestClient(app, base_url="https://example.com", follow_redirects=False)
+    response = client.get("/")
+    assert response.status_code == 200

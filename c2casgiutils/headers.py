@@ -6,15 +6,17 @@ from collections.abc import Awaitable, Callable, Collection
 from typing import TypedDict
 
 from pydantic import BaseModel
+from starlette.datastructures import URL
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
-from starlette.types import ASGIApp
+from starlette.responses import RedirectResponse, Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 _LOGGER = logging.getLogger(__name__)
 
 # Content type matcher
 _HTML_CONTENT_TYPE_MATCH = r"^text/html(?:;|$)"
+_LOCALHOST_NETLOC_RE = re.compile(r"^localhost(:\d+)?$")
 
 Header = str | list[str] | dict[str, str] | dict[str, list[str]] | None
 
@@ -190,6 +192,30 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
         },
     },
 }
+
+
+class HTTPSRedirectMiddleware:
+    """Middleware that redirects HTTP requests to HTTPS, except for localhost.
+
+    Requests from ``localhost`` (matching ``^localhost(:\\d+)?$``) are passed through
+    without a redirect so that Kubernetes liveness/readiness probes sent over plain HTTP
+    continue to work even when HTTPS enforcement is enabled.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        """Initialize the middleware."""
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Handle ASGI requests, redirecting HTTP to HTTPS unless the host is localhost."""
+        if scope["type"] in ("http", "websocket"):
+            url = URL(scope=scope)
+            if url.scheme in ("http", "ws") and not _LOCALHOST_NETLOC_RE.match(url.netloc):
+                redirect_url = url.replace(scheme=url.scheme.replace("http", "https", 1))
+                response = RedirectResponse(url=str(redirect_url), status_code=301)
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
 
 
 class ArmorHeaderMiddleware(BaseHTTPMiddleware):
