@@ -392,8 +392,7 @@ Add in your application:
 
 ```python
 import c2casgiutils
-from c2casgiutils import broadcast
-from c2casgiutils import config
+from c2casgiutils import broadcast, config, headers
 from prometheus_client import start_http_server
 from prometheus_fastapi_instrumentator import Instrumentator
 from contextlib import asynccontextmanager
@@ -419,9 +418,9 @@ app.add_middleware(
     allowed_hosts=["*"],  # Configure with specific hosts in production
 )
 
-# Add HTTPSRedirectMiddleware
-if config.settings.http:
-    app.add_middleware(HTTPSRedirectMiddleware)
+# Redirect HTTP to HTTPS (except for localhost)
+if not config.settings.http:
+    app.add_middleware(headers.HTTPSRedirectMiddleware)
 
 # Add GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)

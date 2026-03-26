@@ -9,7 +9,6 @@ from c2casgiutils import config, headers, health_checks
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from prometheus_client import start_http_server
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -56,9 +55,9 @@ app.add_middleware(
     allowed_hosts=["*"],  # Configure with specific hosts in production
 )
 
-# Add HTTPSRedirectMiddleware
+# Redirect HTTP to HTTPS (except for localhost)
 if not config.settings.http:
-    app.add_middleware(HTTPSRedirectMiddleware)
+    app.add_middleware(headers.HTTPSRedirectMiddleware)
 
 # Add GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
