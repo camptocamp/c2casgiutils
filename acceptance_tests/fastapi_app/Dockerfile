@@ -50,6 +50,6 @@ COPY pyproject.toml logging.yaml ./
 RUN --mount=type=cache,target=/root/.cache \
     python3 -m pip install --disable-pip-version-check --no-deps .
 
-CMD ["uvicorn", "fastapi_app.main:app", "--host=0.0.0.0", "--port=8080", "--log-config=/app/logging.yaml"]
+CMD ["uvicorn", "fastapi_app.main:app", "--host=0.0.0.0", "--port=8080", "--log-config=/app/logging.yaml", "--proxy-headers", "--forwarded-allow-ips=*"]
 
 EXPOSE 8080
