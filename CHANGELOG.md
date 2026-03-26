@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8
+
+### Added
+
+- **Headers**: Added `HTTPSRedirectMiddleware` that redirects HTTP to HTTPS while bypassing requests from `localhost` (matching `^localhost(:\d+)?$`), allowing Kubernetes liveness/readiness probes to work over plain HTTP.
+
 ## 0.7
 
 ### ⚠️ Breaking Changes & Migration Guide
