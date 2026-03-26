@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8
+
+### Added
+
+- **Headers**: Added `HTTPSRedirectMiddleware` that redirects HTTP to HTTPS while bypassing requests from `localhost` (matching `^localhost(:\d+)?$`), allowing Kubernetes liveness/readiness probes to work over plain HTTP.
+
 ## 0.7
 
 ### ⚠️ Breaking Changes & Migration Guide
@@ -78,7 +84,6 @@ Changes have been made to the example application structure and configuration. I
 - **Headers**: Added support for `Content-Security-Policy` Nonce.
 - **Headers**: Added support for `Content-Security-Policy-Report-Only` header.
 - **Headers**: Can match on `Content-Type`.
-- **Headers**: Added `HTTPSRedirectMiddleware` that redirects HTTP to HTTPS while bypassing requests from `localhost` (matching `^localhost(:\d+)?$`), allowing Kubernetes liveness/readiness probes to work over plain HTTP.
 - **Sentry**: Added support for Sentry tags in configuration.
 - **CLI**: Added helper for command line applications.
 - **Broadcast**: Allows broadcasting on non-async functions.
