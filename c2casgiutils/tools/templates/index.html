@@ -60,7 +60,7 @@
       </p>
       {% else %}
       <p>
-        Logged in as: <a href="{{ user['url'] }}">{{ user['name'] }}</a><br />
+        Logged in as: <a href="{{ user.url }}">{{ user.display_name }}</a><br />
         <a href="{{ url_for('c2c_github_logout') }}">Logout</a>
       </p>
       {% endif %}
