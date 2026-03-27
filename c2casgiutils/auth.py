@@ -683,11 +683,10 @@ if _auth_type == AuthenticationType.GITHUB:
     @router.get("/github/logout")
     async def c2c_github_logout(
         request: Request,
-        response: Response,
         came_from: Annotated[str | None, Depends(_validated_came_from)] = None,
     ) -> RedirectResponse:
         """Logout from GitHub authentication."""
-        response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
-
         redirect_url = came_from or str(request.url_for("c2c_index"))
-        return RedirectResponse(redirect_url)
+        redirect_response = RedirectResponse(redirect_url)
+        redirect_response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
+        return redirect_response
