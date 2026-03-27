@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -160,9 +160,14 @@ class AuthJWTCookie(BaseModel):
     same_site: Annotated[
         Literal["lax", "strict", "none"],
         Field(
-            description="SameSite attribute for JWT cookie",
+            description=(
+                "SameSite attribute for the JWT cookies (state and auth token). "
+                "Defaults to 'lax' to support OAuth and other redirect-based login flows that rely "
+                "on the cookie being sent on top-level navigation from external sites. "
+                "Use 'strict' for stronger CSRF protection when such flows are not required."
+            ),
         ),
-    ] = "strict"
+    ] = "lax"
     secure: Annotated[
         bool,
         Field(
@@ -175,6 +180,12 @@ class AuthJWTCookie(BaseModel):
             description="Path for the JWT cookie (default: the c2c index path)",
         ),
     ] = None
+
+    @field_validator("same_site", mode="before")
+    @classmethod
+    def normalize_same_site(cls, value: str | None) -> str | None:
+        """Normalize same_site values like `Lax` to lowercase."""
+        return value.lower() if isinstance(value, str) else value
 
 
 class AuthJWT(BaseModel):
