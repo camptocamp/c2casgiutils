@@ -238,9 +238,9 @@ Authentication cookie age in seconds (default: 7 days)
 
 ### `C2C__AUTH__JWT__COOKIE__SAME_SITE`
 
-_Optional_, default value: `strict`
+_Optional_, default value: `lax`
 
-SameSite attribute for JWT cookie
+SameSite attribute for the JWT cookies (state and auth token). Defaults to 'lax' to support OAuth and other redirect-based login flows that rely on the cookie being sent on top-level navigation from external sites. Use 'strict' for stronger CSRF protection when such flows are not required.
 
 #### Possible values
 
