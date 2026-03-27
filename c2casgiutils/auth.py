@@ -3,7 +3,7 @@ import logging
 import secrets
 import urllib.parse
 from enum import Enum
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import aiohttp
 import jwt
@@ -317,6 +317,7 @@ def _set_jwt_cookie(
     cookie_name: str = settings.auth.jwt.cookie.name,
     expiration: int = settings.auth.jwt.cookie.age,
     path: str | None = None,
+    same_site: Literal["lax", "strict", "none"] = settings.auth.jwt.cookie.same_site,
 ) -> None:
     """
     Set a JWT cookie in the response.
@@ -327,6 +328,7 @@ def _set_jwt_cookie(
         payload: The payload to encode in the JWT.
         cookie_name: The name of the cookie to set.
         expiration: The expiration time in seconds for the cookie and the token.
+        same_site: The SameSite attribute for the cookie.
     """
 
     if path is None:
@@ -343,7 +345,7 @@ def _set_jwt_cookie(
         max_age=expiration,
         httponly=True,
         secure=settings.auth.jwt.cookie.secure,
-        samesite=settings.auth.jwt.cookie.same_site,
+        samesite=same_site,
         path=path,
     )
 
