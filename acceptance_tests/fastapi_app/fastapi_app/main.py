@@ -97,8 +97,8 @@ async def root() -> RootResponse:
 
 
 # Add Routers
-app.mount("/api", api.app)
-app.mount("/c2c", c2casgiutils.app)
+app.mount(f"{config.settings.route_prefix}api", api.app)
+app.mount(f"{config.settings.route_prefix}c2c", c2casgiutils.app)
 
 instrumentator = Instrumentator(should_instrument_requests_inprogress=True)
 instrumentator.instrument(app)

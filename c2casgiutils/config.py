@@ -1,9 +1,12 @@
+import logging
 import os
 from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class Redis(BaseModel):
@@ -278,8 +281,26 @@ class Settings(BaseSettings, extra="ignore"):
             description="The application is running in HTTP mode to be used for development only (default: False)",
         ),
     ] = False
+    route_prefix: Annotated[
+        str, Field(description="Route prefix for the application, should start and end with a '/'")
+    ] = "/"
 
     model_config = SettingsConfigDict(env_prefix="C2C__", env_nested_delimiter="__")
+
+    @model_validator(mode="after")
+    def validate_route_prefix(self) -> "Settings":
+        """Ensure route_prefix has leading and trailing slashes."""
+        prefix = (self.route_prefix or "").strip()
+        if not prefix:
+            prefix = "/"
+        if not prefix.startswith("/"):
+            prefix = f"/{prefix}"
+        if not prefix.endswith("/"):
+            prefix = f"{prefix}/"
+        if prefix != self.route_prefix:
+            _LOGGER.info("Normalized route prefix to '%s'", prefix)
+        self.route_prefix = prefix
+        return self
 
 
 settings = Settings()
