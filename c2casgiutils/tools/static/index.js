@@ -39,6 +39,9 @@ class Headers extends window.admin.Element {
           ([key, value]) => window.lit.html`<b>${key}</b>: ${value}`,
         )
       : [];
+    const scope = data.scope
+      ? Object.entries(data.scope).map(([key, value]) => window.lit.html`<b>${key}</b>: ${value}`)
+      : [];
 
     return window.lit.html`<table class="table"><tbody>
               <tr>
@@ -64,6 +67,10 @@ class Headers extends window.admin.Element {
               <tr>
                 <th>Headers</th>
                 <td>${headers.map((header) => window.lit.html`${header}<br>`)}</td>
+              </tr>
+              <tr>
+                <th>Scope</th>
+                <td>${scope.map((item) => window.lit.html`${item}<br>`)}</td>
               </tr>
               </tbody></table>`;
   }
