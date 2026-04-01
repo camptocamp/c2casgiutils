@@ -124,7 +124,7 @@ all = ["fastapi[standard]", "alembic", "sqlalchemy", "prometheus-fastapi-instrum
 
 [build-system]
 requires = [
-  "poetry-core==2.3.1",
+  "poetry-core==2.0.1",
   "poetry-dynamic-versioning[plugin]==1.10.0",
   "poetry-plugin-tweak-dependencies-version==1.5.5",
   "poetry-plugin-drop-python-upper-constraint==1.0.1",
