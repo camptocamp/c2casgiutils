@@ -1,10 +1,11 @@
+import asyncio
 import base64
 import hashlib
 import logging
-from pathlib import Path
+import pathlib
 from typing import Annotated, cast
 
-import aiofiles
+from anyio import Path
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -36,7 +37,7 @@ router.include_router(
 static_router = Router()
 static_router.mount(
     "/static",
-    StaticFiles(directory=Path(__file__).parent / "static"),
+    StaticFiles(directory=str(pathlib.Path(__file__).parent / "static")),
     name="c2c_static",
 )
 
@@ -47,23 +48,22 @@ async def startup(main_app: FastAPI) -> None:
     await logging_tools.startup(main_app)
 
 
-_templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+_templates = Jinja2Templates(directory=str(pathlib.Path(__file__).parent / "templates"))
 
 
 async def _integrity(file_name: str) -> str:
     """Get the integrity of a file."""
     file_path = Path(__file__).parent / "static" / file_name
-    if not file_path.exists():
+    if not await file_path.exists():
         _LOGGER.error("File %s does not exist in static directory", file_name)
         return ""
-    if not file_path.is_file():
+    if not await file_path.is_file():
         _LOGGER.error("Path %s is not a file in static directory", file_name)
         return ""
-    async with aiofiles.open(file_path, mode="rb") as file:
-        content = await file.read()
-        hasher = hashlib.new("sha512", content)
-        digest = hasher.digest()
-        return f"sha512-{base64.standard_b64encode(digest).decode()}"
+    content = await file_path.read_bytes()
+    hasher = hashlib.new("sha512", content)
+    digest = hasher.digest()
+    return f"sha512-{base64.standard_b64encode(digest).decode()}"
 
 
 _FILES = ["favicon-16x16.png", "favicon-32x32.png", "index.js", "index.css"]
@@ -72,10 +72,12 @@ _FILES = ["favicon-16x16.png", "favicon-32x32.png", "index.js", "index.css"]
 @router.get("/", response_class=HTMLResponse)
 async def c2c_index(request: Request, auth_info: Annotated[auth.AuthInfo, Depends(auth.get_auth)]) -> str:
     """Get an interactive page to use the tools."""
-
+    integrity_entries = await asyncio.gather(*(_integrity(file_name) for file_name in _FILES))
+    integrity = dict(zip(_FILES, integrity_entries, strict=True))
     return cast(
         "str",
         _templates.TemplateResponse(
+            request,
             "index.html",
             {
                 "request": request,
@@ -85,7 +87,7 @@ async def c2c_index(request: Request, auth_info: Annotated[auth.AuthInfo, Depend
                 "auth_type": auth.auth_type(),
                 "AuthenticationType": auth.AuthenticationType,
                 "application_module": config.settings.tools.logging.application_module,
-                "integrity": {file_name: await _integrity(file_name) for file_name in _FILES},
+                "integrity": integrity,
             },
         ),
     )
