@@ -44,7 +44,7 @@ static_router.mount(
 
 async def startup(main_app: FastAPI) -> None:
     """Initialize application on startup."""
-    main_app.mount("/c2c_static", static_router)
+    main_app.mount(f"{config.settings.route_prefix}c2c_static", static_router)
     await logging_tools.startup(main_app)
 
 

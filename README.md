@@ -896,4 +896,10 @@ _Optional_, default value: `False`
 
 The application is running in HTTP mode to be used for development only (default: False)
 
+### `C2C__ROUTE_PREFIX`
+
+_Optional_, default value: `/`
+
+Route prefix for the application, should start and end with a '/'
+
 <!-- generated env. vars. end -->
