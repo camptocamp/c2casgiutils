@@ -28,6 +28,7 @@ class HeadersResponse(BaseModel):
 
     headers: dict[str, str]
     client_info: HeadersClientInfoResponse
+    scope: dict[str, str | int | float | bool | None]
 
 
 def _process_url(url: starlette.datastructures.URL) -> dict[str, str | int | bool]:
@@ -48,8 +49,15 @@ async def _c2c_headers(request: Request) -> HeadersResponse:
     if "cookie" in headers:
         headers["cookie"] = "*****"
 
+    scope = {
+        key: value
+        for key, value in request.scope.items()
+        if isinstance(value, (str, int, float, bool, type(None)))
+    }
+
     return HeadersResponse(
         headers=headers,
+        scope=scope,
         client_info=HeadersClientInfoResponse(
             url_str=str(request.url),
             url=_process_url(request.url),
