@@ -34,6 +34,27 @@ docker compose up --build
 
 See [`scaffold/README.md`](scaffold/README.md) for the full setup guide.
 
+## Uvicorn and proxies (Docker/Kubernetes)
+
+The scaffold Dockerfile uses `uvicorn` to start the application. Typical flags include:
+
+- `--host=0.0.0.0` to bind on all interfaces inside the container.
+- `--port=8080` to expose the HTTP port.
+- `--log-config=/app/logging.yaml` to load the logging configuration.
+
+When the app runs behind a reverse proxy (Kubernetes Ingress, Traefik, nginx, etc.), enable forwarded headers so the
+app keeps the correct scheme (`https`) and client IP:
+
+```bash
+--proxy-headers --forwarded-allow-ips=*
+```
+
+- `--proxy-headers` makes Uvicorn trust `X-Forwarded-Proto`, `X-Forwarded-For`, and related headers.
+- `--forwarded-allow-ips=*` allows forwarded headers from any upstream proxy. If you know your proxy IPs, prefer a
+  strict list instead of `*` to harden the configuration.
+
+See the Uvicorn settings reference for the full list of options: https://www.uvicorn.org/settings/
+
 ## Installation
 
 ```bash
