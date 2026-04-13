@@ -92,10 +92,6 @@ app.add_middleware(
     allowed_hosts=["*"],  # Configure with specific hosts in production
 )
 
-# Add HTTPSRedirectMiddleware
-if config.settings.http:
-    app.add_middleware(HTTPSRedirectMiddleware)
-
 # Add GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
