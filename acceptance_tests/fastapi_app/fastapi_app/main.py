@@ -92,7 +92,7 @@ async def root() -> RootResponse:
     return RootResponse(message="Hello World")
 
 
-@app.get("/c2c")
+@app.get(f"{config.settings.route_prefix}c2c")
 async def redirect_c2c(request: Request) -> RedirectResponse:
     """Redirect to the mounted `c2c` app canonical path."""
     url = request.url

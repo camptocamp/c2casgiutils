@@ -2,21 +2,24 @@ import asyncio
 import base64
 import hashlib
 import logging
-import pathlib
 from typing import Annotated, cast
 
 from anyio import Path
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.routing import Router
 
 from c2casgiutils import auth, config
 from c2casgiutils.tools import headers
 from c2casgiutils.tools import logging_ as logging_tools
 
 _LOGGER = logging.getLogger(__name__)
+
+_BASE_DIR = Path(__file__).parent
+_TEMPLATES_DIR = _BASE_DIR / "templates"
+_STATIC_DIR = _BASE_DIR.parent / "static"
+
+_templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 router = APIRouter()
 
@@ -34,26 +37,14 @@ router.include_router(
 )
 
 
-static_router = Router()
-static_router.mount(
-    "/static",
-    StaticFiles(directory=str(pathlib.Path(__file__).parent / "static")),
-    name="c2c_static",
-)
-
-
 async def startup(main_app: FastAPI) -> None:
     """Initialize application on startup."""
-    main_app.mount(f"{config.settings.route_prefix}c2c_static", static_router)
     await logging_tools.startup(main_app)
-
-
-_templates = Jinja2Templates(directory=str(pathlib.Path(__file__).parent / "templates"))
 
 
 async def _integrity(file_name: str) -> str:
     """Get the integrity of a file."""
-    file_path = Path(__file__).parent / "static" / file_name
+    file_path = _STATIC_DIR / file_name
     if not await file_path.exists():
         _LOGGER.error("File %s does not exist in static directory", file_name)
         return ""

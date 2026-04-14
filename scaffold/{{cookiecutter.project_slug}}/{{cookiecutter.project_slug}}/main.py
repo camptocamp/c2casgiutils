@@ -93,7 +93,7 @@ async def root() -> RootResponse:
     return RootResponse(message="Hello World")
 
 
-@app.get("/c2c")
+@app.get(f"{config.settings.route_prefix}c2c")
 async def redirect_c2c(request: Request) -> RedirectResponse:
     """Redirect to the mounted `c2c` app canonical path."""
     url = request.url
@@ -103,8 +103,8 @@ async def redirect_c2c(request: Request) -> RedirectResponse:
     return RedirectResponse(url=redirect_url, status_code=307)
 
 # Add Routers
-app.mount("/api", api.app)
-app.mount("/c2c", c2casgiutils.app)
+app.mount(f"{config.settings.route_prefix}api", api.app)
+app.mount(f"{config.settings.route_prefix}c2c", c2casgiutils.app)
 
 instrumentator = Instrumentator(should_instrument_requests_inprogress=True)
 instrumentator.instrument(app)
