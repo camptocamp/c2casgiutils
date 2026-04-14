@@ -90,7 +90,6 @@ DEFAULT_HEADERS_CONFIG: dict[str, HeaderMatcher] = {
             "Referrer-Policy": "no-referrer",
             "Permissions-Policy": ["geolocation=()", "microphone=()"],
             "X-DNS-Prefetch-Control": "off",
-            "Expect-CT": "max-age=86400, enforce",
             "Origin-Agent-Cluster": "?1",
             "Cross-Origin-Embedder-Policy": "require-corp",
             "Cross-Origin-Opener-Policy": "same-origin",
