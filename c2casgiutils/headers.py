@@ -1,15 +1,18 @@
 import base64
+import ipaddress
 import logging
 import re
 import secrets
 from collections.abc import Awaitable, Callable, Collection
-from typing import TypedDict
+from typing import Literal, TypedDict
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel
+from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +23,201 @@ Header = str | list[str] | dict[str, str] | dict[str, list[str]] | None
 
 # Placeholder that will be replaced with a generated nonce random value.
 CSP_NONCE = "'nonce'"
+
+_ALLOWED_PROTO = {"http", "https", "ws", "wss"}
+_DEFAULT_PORT_BY_SCHEME = {"http": 80, "https": 443, "ws": 80, "wss": 443}
+
+
+def _parse_raw_hosts(value: str) -> list[str]:
+    return [item for item in (part.strip() for part in value.split(",")) if item]
+
+
+class _TrustedHosts:
+    """Container for trusted hosts and networks."""
+
+    def __init__(self, trusted_hosts: list[str] | str) -> None:
+        self.always_trust: bool = trusted_hosts in ("*", ["*"])
+
+        self.trusted_literals: set[str] = set()
+        self.trusted_hosts: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
+        self.trusted_networks: set[ipaddress.IPv4Network | ipaddress.IPv6Network] = set()
+
+        if not self.always_trust:
+            if isinstance(trusted_hosts, str):
+                trusted_hosts = _parse_raw_hosts(trusted_hosts)
+
+            for host in trusted_hosts:
+                if "/" in host:
+                    try:
+                        self.trusted_networks.add(ipaddress.ip_network(host))
+                    except ValueError:
+                        self.trusted_literals.add(host)
+                else:
+                    try:
+                        self.trusted_hosts.add(ipaddress.ip_address(host))
+                    except ValueError:
+                        self.trusted_literals.add(host)
+
+    def __contains__(self, host: str | None) -> bool:
+        """Check if a client host is trusted."""
+        if self.always_trust:
+            return True
+
+        if not host:
+            return False
+
+        try:
+            ip = ipaddress.ip_address(host)
+            if ip in self.trusted_hosts:
+                return True
+            return any(ip in net for net in self.trusted_networks)
+
+        except ValueError:
+            return host in self.trusted_literals
+
+
+def _first_csv_header_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    first_value = value.split(",", 1)[0].strip()
+    return first_value or None
+
+
+def _unquote_header_value(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped[0] == stripped[-1] == '"':
+        return stripped[1:-1]
+    return stripped
+
+
+def _parse_forwarded_header(value: str | None) -> dict[str, str]:
+    if value is None:
+        return {}
+    first_item = _first_csv_header_value(value)
+    if first_item is None:
+        return {}
+
+    result: dict[str, str] = {}
+    for part in first_item.split(";"):
+        key, separator, raw_val = part.partition("=")
+        if not separator:
+            continue
+        normalized_key = key.strip().lower()
+        normalized_value = _unquote_header_value(raw_val)
+        if normalized_key and normalized_value:
+            result[normalized_key] = normalized_value
+    return result
+
+
+def _split_host_port(host_value: str) -> tuple[str | None, int | None]:
+    try:
+        parsed = urlsplit(f"//{host_value}")
+    except ValueError:
+        return None, None
+    else:
+        return parsed.hostname, parsed.port
+
+
+def _format_host_header(host: str, port: int | None, scheme: str) -> str:
+    host_header = f"[{host}]" if ":" in host and not host.startswith("[") else host
+    default_port = _DEFAULT_PORT_BY_SCHEME.get(scheme)
+    if port is not None and port != default_port:
+        return f"{host_header}:{port}"
+    return host_header
+
+
+class ForwardedHeadersMiddleware:
+    """Apply trusted proxy host/proto/port headers to ASGI scope.
+
+    Uvicorn's proxy middleware updates scheme and client address but does not rewrite
+    the host used by Starlette/FastAPI absolute URL generation. This middleware updates
+    `scope["scheme"]`, `scope["server"]`, and `Host` from trusted `Forwarded` or
+    `X-Forwarded-*` headers.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        trusted_hosts: list[str] | str = "127.0.0.1",
+        headers_type: Literal["x-forwarded", "forwarded"] = "x-forwarded",
+    ) -> None:
+        self.app = app
+        self.trusted_hosts = _TrustedHosts(trusted_hosts)
+        self.headers_type = headers_type
+
+    async def __call__(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
+        """Apply trusted forwarded headers before calling the downstream app."""
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        if self.headers_type not in ("forwarded", "x-forwarded"):
+            if self.headers_type != "none":  # type: ignore[comparison-overlap]
+                _LOGGER.warning(
+                    "Invalid headers_type '%s' for ForwardedHeadersMiddleware; expected 'forwarded', 'x-forwarded', or 'none'. No headers will be processed.",
+                    self.headers_type,
+                )
+            await self.app(scope, receive, send)
+            return
+
+        client_addr = scope.get("client")
+        client_host = client_addr[0] if client_addr else None
+        if client_host not in self.trusted_hosts:
+            _LOGGER.debug(
+                "Client host '%s' not in trusted hosts; skipping forwarded header processing.",
+                client_host,
+            )
+            await self.app(scope, receive, send)
+            return
+
+        headers = MutableHeaders(scope=scope)
+
+        host: str | None = None
+        port: int | None = None
+        scheme = scope.get("scheme", "http")
+        forwarded_scheme: str | None = None
+        forwarded_host: str | None = None
+        x_forwarded_port: str | None = None
+
+        if self.headers_type == "forwarded":
+            forwarded = (
+                _parse_forwarded_header(headers.get("forwarded")) if self.headers_type == "forwarded" else {}
+            )
+            forwarded_scheme = forwarded.get("proto")
+            forwarded_host = forwarded.get("host")
+        else:
+            forwarded_scheme = _first_csv_header_value(headers.get("x-forwarded-proto"))
+            forwarded_host = _first_csv_header_value(headers.get("x-forwarded-host"))
+            x_forwarded_port = _first_csv_header_value(headers.get("x-forwarded-port"))
+
+        if forwarded_scheme:
+            forwarded_scheme = forwarded_scheme.lower()
+        if forwarded_scheme and forwarded_scheme in _ALLOWED_PROTO:
+            if scope["type"] == "websocket":
+                scope["scheme"] = forwarded_scheme.replace("http", "ws")
+            else:
+                scope["scheme"] = forwarded_scheme
+            scheme = scope["scheme"]
+
+        if forwarded_host:
+            host, port = _split_host_port(forwarded_host)
+
+        if port is None and x_forwarded_port and x_forwarded_port.isdigit():
+            port = int(x_forwarded_port)
+
+        if host is not None:
+            if port is None:
+                port = _DEFAULT_PORT_BY_SCHEME.get(scheme, 80)
+
+            scope["server"] = (host, port)
+            headers["host"] = _format_host_header(host, port, scheme)
+
+        await self.app(scope, receive, send)
 
 
 class HeaderMatcher(TypedDict, total=False):

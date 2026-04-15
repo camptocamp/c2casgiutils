@@ -813,3 +813,254 @@ async def test_dispatch_nonce_base64_encoding(mock_request):
         valid_base64 = False
 
     assert valid_base64, "Nonce should be valid base64"
+
+
+@pytest.mark.asyncio
+async def test_forwarded_headers_middleware_x_forwarded_host_port_proto():
+    from c2casgiutils.headers import ForwardedHeadersMiddleware
+
+    captured_scope = None
+
+    async def simple_app(scope, receive, send):
+        nonlocal captured_scope
+        captured_scope = scope
+        response = Response("ok")
+        await response(scope, receive, send)
+
+    middleware = ForwardedHeadersMiddleware(simple_app, trusted_hosts="*", headers_type="x-forwarded")
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/tiles/admin/",
+        "raw_path": b"/tiles/admin/",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"wrong"),
+            (b"x-forwarded-host", b"geoservices-int.camptocamp.com"),
+            (b"x-forwarded-port", b"443"),
+            (b"x-forwarded-proto", b"https"),
+        ],
+        "client": ("127.0.0.1", 1234),
+        "server": ("127.0.0.1", 8080),
+    }
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(_message):
+        return None
+
+    await middleware(scope, receive, send)
+
+    assert captured_scope is not None
+    assert captured_scope["scheme"] == "https"
+    assert captured_scope["server"] == ("geoservices-int.camptocamp.com", 443)
+    headers = dict(captured_scope["headers"])
+    assert headers[b"host"] == b"geoservices-int.camptocamp.com"
+
+
+@pytest.mark.asyncio
+async def test_forwarded_headers_middleware_prefers_forwarded_header():
+    from c2casgiutils.headers import ForwardedHeadersMiddleware
+
+    captured_scope = None
+
+    async def simple_app(scope, receive, send):
+        nonlocal captured_scope
+        captured_scope = scope
+        response = Response("ok")
+        await response(scope, receive, send)
+
+    middleware = ForwardedHeadersMiddleware(simple_app, trusted_hosts="*", headers_type="forwarded")
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/tiles/admin/",
+        "raw_path": b"/tiles/admin/",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"wrong"),
+            (b"forwarded", b"for=5.1.102.69;host=forwarded.example.com:8443;proto=https"),
+            (b"x-forwarded-host", b"x-forwarded.example.com"),
+            (b"x-forwarded-port", b"443"),
+            (b"x-forwarded-proto", b"http"),
+        ],
+        "client": ("127.0.0.1", 1234),
+        "server": ("127.0.0.1", 8080),
+    }
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(_message):
+        return None
+
+    await middleware(scope, receive, send)
+
+    assert captured_scope is not None
+    assert captured_scope["scheme"] == "https"
+    assert captured_scope["server"] == ("forwarded.example.com", 8443)
+    headers = dict(captured_scope["headers"])
+    assert headers[b"host"] == b"forwarded.example.com:8443"
+
+
+@pytest.mark.asyncio
+async def test_forwarded_headers_middleware_skips_untrusted_client():
+    from c2casgiutils.headers import ForwardedHeadersMiddleware
+
+    captured_scope = None
+
+    async def simple_app(scope, receive, send):
+        nonlocal captured_scope
+        captured_scope = scope
+        response = Response("ok")
+        await response(scope, receive, send)
+
+    middleware = ForwardedHeadersMiddleware(
+        simple_app,
+        trusted_hosts=["10.0.0.1"],
+        headers_type="x-forwarded",
+    )
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/tiles/admin/",
+        "raw_path": b"/tiles/admin/",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"wrong"),
+            (b"x-forwarded-host", b"geoservices-int.camptocamp.com"),
+            (b"x-forwarded-port", b"443"),
+            (b"x-forwarded-proto", b"https"),
+        ],
+        "client": ("127.0.0.1", 1234),
+        "server": ("127.0.0.1", 8080),
+    }
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(_message):
+        return None
+
+    await middleware(scope, receive, send)
+
+    assert captured_scope is not None
+    assert captured_scope["scheme"] == "http"
+    assert captured_scope["server"] == ("127.0.0.1", 8080)
+    headers = dict(captured_scope["headers"])
+    assert headers[b"host"] == b"wrong"
+
+
+@pytest.mark.asyncio
+async def test_forwarded_headers_middleware_forwarded_mode_ignores_x_forwarded_headers():
+    from c2casgiutils.headers import ForwardedHeadersMiddleware
+
+    captured_scope = None
+
+    async def simple_app(scope, receive, send):
+        nonlocal captured_scope
+        captured_scope = scope
+        response = Response("ok")
+        await response(scope, receive, send)
+
+    middleware = ForwardedHeadersMiddleware(simple_app, trusted_hosts="*", headers_type="forwarded")
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/tiles/admin/",
+        "raw_path": b"/tiles/admin/",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"wrong"),
+            (b"x-forwarded-host", b"x-forwarded.example.com"),
+            (b"x-forwarded-port", b"443"),
+            (b"x-forwarded-proto", b"https"),
+        ],
+        "client": ("127.0.0.1", 1234),
+        "server": ("127.0.0.1", 8080),
+    }
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(_message):
+        return None
+
+    await middleware(scope, receive, send)
+
+    assert captured_scope is not None
+    assert captured_scope["scheme"] == "http"
+    assert captured_scope["server"] == ("127.0.0.1", 8080)
+    headers = dict(captured_scope["headers"])
+    assert headers[b"host"] == b"wrong"
+
+
+@pytest.mark.asyncio
+async def test_forwarded_headers_middleware_x_forwarded_mode_ignores_forwarded_header():
+    from c2casgiutils.headers import ForwardedHeadersMiddleware
+
+    captured_scope = None
+
+    async def simple_app(scope, receive, send):
+        nonlocal captured_scope
+        captured_scope = scope
+        response = Response("ok")
+        await response(scope, receive, send)
+
+    middleware = ForwardedHeadersMiddleware(simple_app, trusted_hosts="*", headers_type="x-forwarded")
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/tiles/admin/",
+        "raw_path": b"/tiles/admin/",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"wrong"),
+            (b"forwarded", b"for=5.1.102.69;host=forwarded.example.com;proto=https"),
+            (b"x-forwarded-host", b"x-forwarded.example.com"),
+            (b"x-forwarded-port", b"8443"),
+            (b"x-forwarded-proto", b"https"),
+        ],
+        "client": ("127.0.0.1", 1234),
+        "server": ("127.0.0.1", 8080),
+    }
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(_message):
+        return None
+
+    await middleware(scope, receive, send)
+
+    assert captured_scope is not None
+    assert captured_scope["scheme"] == "https"
+    assert captured_scope["server"] == ("x-forwarded.example.com", 8443)
+    headers = dict(captured_scope["headers"])
+    assert headers[b"host"] == b"x-forwarded.example.com:8443"

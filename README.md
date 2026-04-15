@@ -42,8 +42,13 @@ The scaffold Dockerfile uses `uvicorn` to start the application. Typical flags i
 - `--port=8080` to expose the HTTP port.
 - `--log-config=/app/logging.yaml` to load the logging configuration.
 
-When the app runs behind a reverse proxy (Kubernetes Ingress, Traefik, nginx, etc.), enable forwarded headers so the
-app keeps the correct scheme (`https`) and client IP:
+See the Uvicorn settings reference for the full list of options: https://www.uvicorn.org/settings/
+
+### Forwarded headers handling (Reverse proxy)
+
+When the app runs behind a reverse proxy (Kubernetes Ingress, Traefik, nginx, etc.) you should trust forwarded headers.
+
+If the `Host` header has the right values you can use the option provided by Uvicorn:
 
 ```bash
 --proxy-headers --forwarded-allow-ips=*
@@ -53,7 +58,20 @@ app keeps the correct scheme (`https`) and client IP:
 - `--forwarded-allow-ips=*` allows forwarded headers from any upstream proxy. If you know your proxy IPs, prefer a
   strict list instead of `*` to harden the configuration.
 
-See the Uvicorn settings reference for the full list of options: https://www.uvicorn.org/settings/
+If the `Host` header is not correct, for example with Apache and the default configuration,
+the header `X-Forwarded-Host` or `Forwarded` should also be interpreted.
+
+In that case, `ForwardedHeadersMiddleware` is required.
+
+To use the [RFC7239](https://www.rfc-editor.org/rfc/rfc7239) `Forwarded` header, set `C2C__PROXY_HEADERS__TYPE=forwarded`.
+Or use `C2C__PROXY_HEADERS__TYPE=x-forwarded` to trust `X-Forwarded-*`.
+
+Use `C2C__PROXY_HEADERS__TRUSTED_HOSTS=...` to restrict which proxy IPs are trusted (use `*` only if you must).
+
+Note: when `--proxy-headers` is enabled, Uvicorn updates the client address before
+`ForwardedHeadersMiddleware` runs. That means `trusted_hosts` is matched against the updated
+client address, not the direct peer connection. If you want this middleware to validate the
+direct proxy IP, run Uvicorn without `--proxy-headers` and rely on the middleware instead.
 
 ## Installation
 
@@ -109,6 +127,14 @@ app.add_middleware(headers.ArmorHeaderMiddleware,
         "http": {"headers": {"Strict-Transport-Security": None} if not config.settings.http else {}},
     }
 )
+
+# Optional: trust host/port from forwarded proxy headers
+if config.settings.proxy_headers.type != "none":
+    app.add_middleware(
+        headers.ForwardedHeadersMiddleware,
+        trusted_hosts=config.settings.proxy_headers.trusted_hosts,
+        headers_type=config.settings.proxy_headers.type,
+    )
 
 # Get Prometheus HTTP server port from environment variable 9000 by default
 start_http_server(config.settings.prometheus.port)
@@ -885,6 +911,22 @@ Redis prefix for logging settings
 _Optional_, default value: `c2casgiutils`
 
 Application module name for logging
+
+### `C2C__PROXY_HEADERS__TYPE`
+
+_Optional_, default value: `none`
+
+Proxy headers mode: 'none' disables host/proto rewriting, 'x-forwarded' trusts X-Forwarded-\* headers, 'forwarded' trusts RFC7239 Forwarded header
+
+#### Possible values
+
+`none`, `x-forwarded`, `forwarded`
+
+### `C2C__PROXY_HEADERS__TRUSTED_HOSTS`
+
+_Optional_, default value: `['127.0.0.1']`
+
+Trusted proxy client hosts/networks. Accepts comma-separated string or list (e.g. '127.0.0.1,10.0.0.0/8' or '\*').
 
 ### `C2C__HTTP`
 

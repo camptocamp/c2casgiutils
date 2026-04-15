@@ -1,8 +1,49 @@
 # Changelog
 
+## 0.9
+
+### Added
+
+- **Headers**: Added `ForwardedHeadersMiddleware` to rewrite request host/scheme/port from trusted proxy headers for correct absolute URL generation.
+- **Settings**: Added proxy headers settings:
+  - `C2C__PROXY_HEADERS__TYPE` with values `none` (default), `x-forwarded`, `forwarded`
+  - `C2C__PROXY_HEADERS__TRUSTED_HOSTS` as a comma-separated list of trusted proxy clients/networks
+
+### Changed
+
+- **Scaffold**: The generated FastAPI application now conditionally enables `ForwardedHeadersMiddleware` from `config.settings.proxy_headers`.
+- **Acceptance app**: The acceptance application now conditionally enables `ForwardedHeadersMiddleware` from `config.settings.proxy_headers`.
+
+### Migration Guide
+
+If you want to enable proxy host/proto/port rewriting in your project, add this code in your `main.py` (after your existing middleware setup):
+
+```python
+app.add_middleware(
+    headers.ArmorHeaderMiddleware,
+    headers_config={"http": {"headers": {"Strict-Transport-Security": None}}}
+    if config.settings.http
+    else {},
+)
+
+if config.settings.proxy_headers.type != "none":
+    app.add_middleware(
+        headers.ForwardedHeadersMiddleware,
+        trusted_hosts=config.settings.proxy_headers.trusted_hosts,
+        headers_type=config.settings.proxy_headers.type,
+    )
+```
+
+Then configure your environment, for example:
+
+```bash
+export C2C__PROXY_HEADERS__TYPE=x-forwarded
+export C2C__PROXY_HEADERS__TRUSTED_HOSTS=127.0.0.1,10.0.0.0/8
+```
+
 ## 0.7
 
-### ⚠️ Breaking Changes & Migration Guide
+### Breaking Changes & Migration Guide
 
 #### Application
 
