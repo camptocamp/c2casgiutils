@@ -294,7 +294,7 @@ class ArmorHeaderMiddleware(BaseHTTPMiddleware):
             _LOGGER.debug(
                 "Adding headers from '%s' on path '%s'.",
                 config.name,
-                request.url.path,
+                path,
             )
             for header, value in config.headers.items():
                 if value is None:
