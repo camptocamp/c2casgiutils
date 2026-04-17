@@ -23,6 +23,10 @@ dependencies = [
 	"fastapi[standard]",
 ]
 
+[project.urls]
+Repository = "https://github.com/camptocamp/{{cookiecutter.project_slug}}"
+Changelog = "https://github.com/camptocamp/{{cookiecutter.project_slug}}/blob/master/CHANGELOG.md"
+
 [project.optional-dependencies]
 dev = [
   "ruff"

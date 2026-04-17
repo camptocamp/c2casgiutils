@@ -110,6 +110,7 @@ dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "prometheus
 [project.urls]
 repository = "https://github.com/camptocamp/c2casgiutils"
 "Bug Tracker" = "https://github.com/camptocamp/c2casgiutils/issues"
+Changelog = "https://github.com/camptocamp/c2casgiutils/blob/master/CHANGELOG.md"
 
 [project.scripts]
 c2casgiutils-genversion = "c2casgiutils.scripts.genversion:main"

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9
+## 0.11
 
 ### Added
 
@@ -13,6 +13,7 @@
 
 - **Scaffold**: The generated FastAPI application now conditionally enables `ForwardedHeadersMiddleware` from `config.settings.proxy_headers`.
 - **Acceptance app**: The acceptance application now conditionally enables `ForwardedHeadersMiddleware` from `config.settings.proxy_headers`.
+- **Packaging**: Added a `Changelog` URL in package metadata (`project.urls`) for both the main package and the scaffold template.
 
 ### Migration Guide
 
