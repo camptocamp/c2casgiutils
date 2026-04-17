@@ -23,6 +23,9 @@ dependencies = [
 	"fastapi[standard]",
 ]
 
+[project.urls]
+Repository = "https://github.com/camptocamp/{{cookiecutter.project_slug}}"
+
 [project.optional-dependencies]
 dev = [
   "ruff"
