@@ -108,7 +108,7 @@ requires-python = ">=3.10"
 dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "prometheus-fastapi-instrumentator", "redis", "aiohttp", "pyjwt", "aiofiles", "sentry-sdk[fastapi]"]
 
 [project.urls]
-repository = "https://github.com/camptocamp/c2casgiutils"
+Repository = "https://github.com/camptocamp/c2casgiutils"
 "Bug Tracker" = "https://github.com/camptocamp/c2casgiutils/issues"
 Changelog = "https://github.com/camptocamp/c2casgiutils/blob/master/CHANGELOG.md"
 
