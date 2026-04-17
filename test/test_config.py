@@ -98,3 +98,28 @@ def test_tags_with_empty_value(clean_env):
         "empty": "",
         "nonempty": "value",
     }
+
+
+def test_proxy_headers_defaults(clean_env):
+    settings = Settings()
+
+    assert settings.proxy_headers.type == "none"
+    assert settings.proxy_headers.trusted_hosts == ["127.0.0.1"]
+
+
+def test_proxy_headers_from_environment(clean_env):
+    os.environ["C2C__PROXY_HEADERS__TYPE"] = "x-forwarded"
+    os.environ["C2C__PROXY_HEADERS__TRUSTED_HOSTS"] = "127.0.0.1,10.0.0.0/8, 192.168.1.1"
+
+    settings = Settings()
+
+    assert settings.proxy_headers.type == "x-forwarded"
+    assert settings.proxy_headers.trusted_hosts == ["127.0.0.1", "10.0.0.0/8", "192.168.1.1"]
+
+
+def test_proxy_headers_forwarded_type(clean_env):
+    os.environ["C2C__PROXY_HEADERS__TYPE"] = "forwarded"
+
+    settings = Settings()
+
+    assert settings.proxy_headers.type == "forwarded"

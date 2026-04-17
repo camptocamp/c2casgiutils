@@ -264,6 +264,39 @@ class SettingsTools(BaseModel):
     ] = SettingsToolsLogging()
 
 
+class ProxyHeaders(BaseModel):
+    """Proxy headers handling settings."""
+
+    type: Annotated[
+        Literal["none", "x-forwarded", "forwarded"],
+        Field(
+            description=(
+                "Proxy headers mode: 'none' disables host/proto rewriting, "
+                "'x-forwarded' trusts X-Forwarded-* headers, 'forwarded' trusts RFC7239 Forwarded header"
+            ),
+        ),
+    ] = "none"
+    trusted_hosts: Annotated[
+        list[str] | str,
+        Field(
+            description=(
+                "Trusted proxy client hosts/networks. Accepts comma-separated string or list "
+                "(e.g. '127.0.0.1,10.0.0.0/8' or '*')."
+            ),
+        ),
+    ] = ["127.0.0.1"]
+
+    @field_validator("trusted_hosts", mode="before")
+    @classmethod
+    def normalize_trusted_hosts(cls, value: list[str] | str | None) -> list[str]:
+        """Normalize trusted_hosts from env values to a list."""
+        if value is None:
+            return ["127.0.0.1"]
+        if isinstance(value, list):
+            return [v.strip() for v in value if v.strip()]
+        return [v.strip() for v in value.split(",") if v.strip()]
+
+
 class Settings(BaseSettings, extra="ignore"):
     """Application settings."""
 
@@ -293,6 +326,10 @@ class Settings(BaseSettings, extra="ignore"):
         SettingsTools,
         Field(description="Tools settings"),
     ] = SettingsTools()
+    proxy_headers: Annotated[
+        ProxyHeaders,
+        Field(description="Proxy headers handling settings"),
+    ] = ProxyHeaders()
     http: Annotated[
         bool,
         Field(
