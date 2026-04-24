@@ -24,7 +24,7 @@ app = FastAPI(
 app.include_router(tools.router, prefix="", tags=["c2c_tools"])
 app.include_router(health_checks.router, prefix="/health", tags=["c2c_health_checks"])
 app.include_router(auth.router, prefix="/auth", tags=["c2c_auth"])
-app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="c2c_static")
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="c2c_static")
 
 
 async def startup(main_app: FastAPI) -> None:

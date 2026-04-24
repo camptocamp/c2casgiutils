@@ -1,6 +1,9 @@
 The project must use async-friendly I/O APIs to avoid blocking the event loop.
 
 - `pathlib` must not be used, use `anyio.Path` instead.
+  Exceptions:
+  - `c2casgiutils/scripts/*` are not concerned by this rule.
+  - `pathlib.Path` can be used when opening files in a synchronous-only context where async is not possible.
 - Converting a non-async function to `async` is allowed, and requires updating all call sites to `await` it.
 - `aiofiles` must not be used, use `anyio.Path` instead.
 - All disk or network operation must be done with async API; avoid blocking calls on the event loop.
@@ -9,6 +12,10 @@ The project must use async-friendly I/O APIs to avoid blocking the event loop.
 ## Environment variables
 
 The environment variable should not be accessed directly (except the ones defined by another project); they should be defined in the `Settings` class in `c2casgiutils/config.py` and accessed through the `settings` object.
+
+Exception:
+
+- `SENTRY_DSN` can be accessed directly.
 
 ## Commit messages
 
@@ -75,3 +82,7 @@ To check the code quality, use the `make prospector` command.
   - Formatter validations.
   - The oldest supported Python version (check `pyproject.toml`).
   - Use modern syntax.
+
+## Changelog
+
+The [changelog](./CHANGELOG.md) should respect the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) rules.

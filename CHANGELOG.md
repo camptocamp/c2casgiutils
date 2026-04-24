@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.11
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Changed
+
+- **Async I/O compliance**: Replaced `aiofiles` usage in CLI logging config loading with `anyio.Path`, and removed direct `aiofiles` dependency from project metadata.
+
+## [0.11.0] - 2026-04-17
 
 ### Added
 
@@ -41,7 +51,7 @@ export C2C__PROXY_HEADERS__TYPE=x-forwarded
 export C2C__PROXY_HEADERS__TRUSTED_HOSTS=127.0.0.1,10.0.0.0/8
 ```
 
-## 0.7
+## [0.7.0] - 2026-03-11
 
 ### Breaking Changes & Migration Guide
 
