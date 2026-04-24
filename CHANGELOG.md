@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Async I/O compliance**: Replaced `aiofiles` usage in CLI logging config loading with `anyio.Path`, and removed direct `aiofiles` dependency from project metadata.
+
 ## [0.11.0] - 2026-04-17
 
 ### Added

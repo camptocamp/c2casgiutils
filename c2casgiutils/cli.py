@@ -2,8 +2,8 @@ import argparse
 import logging
 import logging.config
 
-import aiofiles
 import yaml
+from anyio import Path
 
 from c2casgiutils import broadcast
 from c2casgiutils.tools import logging_ as logging_tools
@@ -28,9 +28,8 @@ async def init(args: argparse.Namespace) -> None:
 
     if args.logging_config is not None:
         try:
-            async with aiofiles.open(args.logging_config) as logging_file:
-                logging_config = yaml.safe_load(await logging_file.read())
-                logging.config.dictConfig(logging_config)
+            logging_config = yaml.safe_load(await Path(args.logging_config).read_text())
+            logging.config.dictConfig(logging_config)
         except FileNotFoundError:
             _LOGGER.exception("Logging configuration file not found: '%s'", args.logging_config)
         except PermissionError:
