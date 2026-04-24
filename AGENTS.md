@@ -75,3 +75,7 @@ To check the code quality, use the `make prospector` command.
   - Formatter validations.
   - The oldest supported Python version (check `pyproject.toml`).
   - Use modern syntax.
+
+## Changelog
+
+The [changelog](./CHANGELOG.md) should respect the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) rules.
