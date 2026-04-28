@@ -21,7 +21,7 @@ include = "fastapi_app"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4"
-fastapi = {version = "0.135.2", extras = ["standard"]}
+fastapi = {version = "0.136.0", extras = ["standard"]}
 python-multipart = "0.0.26"
 
 [tool.poetry.group.dev.dependencies]
@@ -30,7 +30,7 @@ prospector-profile-duplicated = "1.12.0"
 prospector-profile-utils = "1.27.0"
 pytest = "9.0.3"
 c2cwsgiutils = { version = "6.1.9", extras = ["test_images"] }
-requests = "2.33.0"
+requests = "2.33.1"
 
 [tool.build-system]
 requires = [ "poetry-core",]
