@@ -1,3 +1,4 @@
+import datetime
 import os
 
 import pytest
@@ -123,3 +124,11 @@ def test_proxy_headers_forwarded_type(clean_env):
     settings = Settings()
 
     assert settings.proxy_headers.type == "forwarded"
+
+
+def test_auth_github_access_token_expiration_margin_from_environment(clean_env):
+    os.environ["C2C__AUTH__GITHUB__ACCESS_TOKEN_EXPIRATION_MARGIN"] = "PT2M30S"
+
+    settings = Settings()
+
+    assert settings.auth.github.access_token_expiration_margin == datetime.timedelta(minutes=2, seconds=30)
