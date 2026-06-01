@@ -577,226 +577,225 @@ if __name__ == "__main__":
 See: https://github.com/camptocamp/c2casgiutils/blob/master/c2casgiutils/config.py
 
 <!-- generated env. vars. start -->
-
 ### `C2C__REDIS__URL`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Redis connection URL
 
 ### `C2C__REDIS__OPTIONS`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Redis connection options, e.g. 'socket_timeout=5,ssl=True'.
 
 ### `C2C__REDIS__SENTINELS`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Redis Sentinels
 
 ### `C2C__REDIS__SERVICENAME`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Redis service name for Sentinel
 
 ### `C2C__REDIS__DB`
 
-_Optional_, default value: `0`
+*Optional*, default value: `0`
 
 Redis database number
 
 ### `C2C__REDIS__BROADCAST_PREFIX`
 
-_Optional_, default value: `broadcast_api_`
+*Optional*, default value: `broadcast_api_`
 
 Redis prefix for broadcast channels
 
 ### `C2C__PROMETHEUS__PREFIX`
 
-_Optional_, default value: `c2casgiutils_`
+*Optional*, default value: `c2casgiutils_`
 
 Prefix for Prometheus metrics
 
 ### `C2C__PROMETHEUS__PORT`
 
-_Optional_, default value: `9000`
+*Optional*, default value: `9000`
 
 Port for Prometheus metrics
 
 ### `C2C__SENTRY__DSN`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Sentry DSN
 
 ### `C2C__SENTRY__DEBUG`
 
-_Optional_, default value: `False`
+*Optional*, default value: `False`
 
 Enable Sentry debug mode
 
 ### `C2C__SENTRY__RELEASE`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Sentry release version
 
 ### `C2C__SENTRY__ENVIRONMENT`
 
-_Optional_, default value: `production`
+*Optional*, default value: `production`
 
 Sentry environment
 
 ### `C2C__SENTRY__DIST`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Sentry distribution
 
 ### `C2C__SENTRY__SAMPLE_RATE`
 
-_Optional_, default value: `1.0`
+*Optional*, default value: `1.0`
 
 Sample rate for error events
 
 ### `C2C__SENTRY__IGNORE_ERRORS`
 
-_Optional_, default value: `[]`
+*Optional*, default value: `[]`
 
 List of exception class names to ignore
 
 ### `C2C__SENTRY__MAX_BREADCRUMBS`
 
-_Optional_, default value: `100`
+*Optional*, default value: `100`
 
 Maximum number of breadcrumbs to capture
 
 ### `C2C__SENTRY__ATTACH_STACKTRACE`
 
-_Optional_, default value: `False`
+*Optional*, default value: `False`
 
 Attach stack trace to all messages
 
 ### `C2C__SENTRY__SEND_DEFAULT_PII`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Send default PII
 
 ### `C2C__SENTRY__EVENT_SCRUBBER`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Event scrubber for sensitive information
 
 ### `C2C__SENTRY__INCLUDE_SOURCE_CONTEXT`
 
-_Optional_, default value: `True`
+*Optional*, default value: `True`
 
 Include source context in events
 
 ### `C2C__SENTRY__INCLUDE_LOCAL_VARIABLES`
 
-_Optional_, default value: `True`
+*Optional*, default value: `True`
 
 Include local variables in events
 
 ### `C2C__SENTRY__ADD_FULL_STACK`
 
-_Optional_, default value: `False`
+*Optional*, default value: `False`
 
 Add full stack trace to events
 
 ### `C2C__SENTRY__MAX_STACK_FRAMES`
 
-_Optional_, default value: `100`
+*Optional*, default value: `100`
 
 Maximum number of stack frames to capture
 
 ### `C2C__SENTRY__SERVER_NAME`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Server name for Sentry events
 
 ### `C2C__SENTRY__PROJECT_ROOT`
 
-_Optional_, default value: `<working_directory>`
+*Optional*, default value: `<working_directory>`
 
 Root directory of the project
 
 ### `C2C__SENTRY__IN_APP_INCLUDE`
 
-_Optional_, default value: `[]`
+*Optional*, default value: `[]`
 
 List of module prefixes that are in the app
 
 ### `C2C__SENTRY__IN_APP_EXCLUDE`
 
-_Optional_, default value: `[]`
+*Optional*, default value: `[]`
 
 List of module prefixes that are not in the app
 
 ### `C2C__SENTRY__MAX_REQUEST_BODY_SIZE`
 
-_Optional_, default value: `medium`
+*Optional*, default value: `medium`
 
 Maximum request body size to capture
 
 ### `C2C__SENTRY__MAX_VALUE_LENGTH`
 
-_Optional_, default value: `1024`
+*Optional*, default value: `1024`
 
 Maximum length of values in event payloads
 
 ### `C2C__SENTRY__CA_CERTS`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Path to alternative CA bundle file in PEM format
 
 ### `C2C__SENTRY__SEND_CLIENT_REPORTS`
 
-_Optional_, default value: `True`
+*Optional*, default value: `True`
 
 Send client reports to Sentry
 
 ### `C2C__SENTRY__TAGS`
 
-_Optional_, default value: `{}`
+*Optional*, default value: `{}`
 
 Default tags for Sentry events, loaded from environment variables with prefix `C2C__SENTRY__TAG_` to set tags. The tag name will be the part after the prefix, converted to lowercase. For example, `C2C__SENTRY__TAG_SERVICE=my-service` will set a tag named `service` (lowercase) with value `my-service`.
 
 ### `C2C__AUTH__JWT__SECRET`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 JWT secret key
 
 ### `C2C__AUTH__JWT__ALGORITHM`
 
-_Optional_, default value: `HS256`
+*Optional*, default value: `HS256`
 
 JWT algorithm (default: HS256)
 
 ### `C2C__AUTH__JWT__COOKIE__NAME`
 
-_Optional_, default value: `c2c-jwt-auth`
+*Optional*, default value: `c2c-jwt-auth`
 
 Authentication cookie name
 
 ### `C2C__AUTH__JWT__COOKIE__AGE`
 
-_Optional_, default value: `604800`
+*Optional*, default value: `604800`
 
 Authentication cookie age in seconds (default: 7 days)
 
 ### `C2C__AUTH__JWT__COOKIE__SAME_SITE`
 
-_Optional_, default value: `lax`
+*Optional*, default value: `lax`
 
 SameSite attribute for the JWT cookies (state and auth token). Defaults to 'lax' to support OAuth and other redirect-based login flows that rely on the cookie being sent on top-level navigation from external sites. Use 'strict' for stronger CSRF protection when such flows are not required.
 
@@ -806,117 +805,117 @@ SameSite attribute for the JWT cookies (state and auth token). Defaults to 'lax'
 
 ### `C2C__AUTH__JWT__COOKIE__SECURE`
 
-_Optional_, default value: `True`
+*Optional*, default value: `True`
 
 Whether the JWT cookie should be secure
 
 ### `C2C__AUTH__JWT__COOKIE__PATH`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Path for the JWT cookie (default: the c2c index path)
 
 ### `C2C__AUTH__SECRET`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Secret key for trivial authentication (not secure)
 
 ### `C2C__AUTH__GITHUB__REPOSITORY`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 GitHub repository for authentication
 
 ### `C2C__AUTH__GITHUB__ACCESS_TYPE`
 
-_Optional_, default value: `pull`
+*Optional*, default value: `pull`
 
 GitHub access type
 
 ### `C2C__AUTH__GITHUB__AUTHORIZE_URL`
 
-_Optional_, default value: `https://github.com/login/oauth/authorize`
+*Optional*, default value: `https://github.com/login/oauth/authorize`
 
 GitHub OAuth authorization URL
 
 ### `C2C__AUTH__GITHUB__TOKEN_URL`
 
-_Optional_, default value: `https://github.com/login/oauth/access_token`
+*Optional*, default value: `https://github.com/login/oauth/access_token`
 
 GitHub OAuth token URL
 
 ### `C2C__AUTH__GITHUB__USER_URL`
 
-_Optional_, default value: `https://api.github.com/user`
+*Optional*, default value: `https://api.github.com/user`
 
 GitHub user API URL
 
 ### `C2C__AUTH__GITHUB__REPO_URL`
 
-_Optional_, default value: `https://api.github.com/repos`
+*Optional*, default value: `https://api.github.com/repos`
 
 GitHub repository API URL
 
 ### `C2C__AUTH__GITHUB__CLIENT_ID`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 GitHub OAuth client ID
 
 ### `C2C__AUTH__GITHUB__CLIENT_SECRET`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 GitHub OAuth client secret
 
 ### `C2C__AUTH__GITHUB__SCOPE`
 
-_Optional_, default value: `repo`
+*Optional*, default value: `repo`
 
 GitHub OAuth scope
 
 ### `C2C__AUTH__GITHUB__PROXY_URL`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 GitHub proxy URL
 
 ### `C2C__AUTH__GITHUB__STATE_COOKIE`
 
-_Optional_, default value: `c2c-state`
+*Optional*, default value: `c2c-state`
 
 GitHub state cookie name
 
 ### `C2C__AUTH__GITHUB__STATE_COOKIE_AGE`
 
-_Optional_, default value: `600`
+*Optional*, default value: `600`
 
 GitHub state cookie age in seconds (default: 10 minutes)
 
 ### `C2C__AUTH__TEST__USERNAME`
 
-_Optional_, default value: `None`
+*Optional*, default value: `None`
 
 Test username
 
 ### `C2C__TOOLS__LOGGING__REDIS_PREFIX`
 
-_Optional_, default value: `c2c_logging_level_`
+*Optional*, default value: `c2c_logging_level_`
 
 Redis prefix for logging settings
 
 ### `C2C__TOOLS__LOGGING__APPLICATION_MODULE`
 
-_Optional_, default value: `c2casgiutils`
+*Optional*, default value: `c2casgiutils`
 
 Application module name for logging
 
 ### `C2C__PROXY_HEADERS__TYPE`
 
-_Optional_, default value: `none`
+*Optional*, default value: `none`
 
-Proxy headers mode: 'none' disables host/proto rewriting, 'x-forwarded' trusts X-Forwarded-\* headers, 'forwarded' trusts RFC7239 Forwarded header
+Proxy headers mode: 'none' disables host/proto rewriting, 'x-forwarded' trusts X-Forwarded-* headers, 'forwarded' trusts RFC7239 Forwarded header
 
 #### Possible values
 
@@ -924,20 +923,19 @@ Proxy headers mode: 'none' disables host/proto rewriting, 'x-forwarded' trusts X
 
 ### `C2C__PROXY_HEADERS__TRUSTED_HOSTS`
 
-_Optional_, default value: `['127.0.0.1']`
+*Optional*, default value: `['127.0.0.1']`
 
-Trusted proxy client hosts/networks. Accepts comma-separated string or list (e.g. '127.0.0.1,10.0.0.0/8' or '\*').
+Trusted proxy client hosts/networks. Accepts comma-separated string or list (e.g. '127.0.0.1,10.0.0.0/8' or '*').
 
 ### `C2C__HTTP`
 
-_Optional_, default value: `False`
+*Optional*, default value: `False`
 
 The application is running in HTTP mode to be used for development only (default: False)
 
 ### `C2C__ROUTE_PREFIX`
 
-_Optional_, default value: `/`
+*Optional*, default value: `/`
 
 Route prefix for the application, should start and end with a '/'
-
 <!-- generated env. vars. end -->
