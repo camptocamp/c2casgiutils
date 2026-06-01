@@ -7,7 +7,8 @@ repos:
           - prettier@3.8.3 # npm
         exclude: |-
           (?x)^(
-            c2casgiutils/tools/templates/index\.html
+            README\.md
+            |c2casgiutils/tools/templates/index\.html
             |scaffold/{{cookiecutter.project_slug}}/README\.md
             |scaffold/{{cookiecutter.project_slug}}/logging\.yaml
           )$
