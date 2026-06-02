@@ -94,7 +94,7 @@ async def broadcast(
     channel: str,
     params: dict[str, Any] | None = None,
     expect_answers: bool = False,
-    timeout: float = 10,
+    timeout: float = 10,  # noqa: ASYNC109
 ) -> list[BroadcastResponse[Any] | MissingAnswer] | None:
     """
     Broadcast a message to the given channel.
@@ -184,7 +184,7 @@ async def decorate(
     channel: str | None = None,
     *,
     expect_answers: Literal[True],
-    timeout: float = 10,
+    timeout: float = 10,  # noqa: ASYNC109
 ) -> Callable[
     _DecoratorArgs, Coroutine[Any, Any, list[BroadcastResponse[_DecoratorReturn] | MissingAnswer]]
 ]: ...
@@ -197,7 +197,7 @@ async def decorate(
     channel: str | None = None,
     *,
     expect_answers: Literal[False] = False,
-    timeout: float = 10,
+    timeout: float = 10,  # noqa: ASYNC109
 ) -> Callable[_DecoratorArgs, Coroutine[Any, Any, None]]: ...
 
 
@@ -207,7 +207,7 @@ async def decorate(
     func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     *,
-    timeout: float = 10,
+    timeout: float = 10,  # noqa: ASYNC109
 ) -> Callable[_DecoratorArgs, Coroutine[Any, Any, None]]: ...
 
 
@@ -215,7 +215,7 @@ async def decorate(
     func: Callable[_DecoratorArgs, Awaitable[_DecoratorReturn] | _DecoratorReturn],
     channel: str | None = None,
     expect_answers: bool = False,
-    timeout: float = 10,
+    timeout: float = 10,  # noqa: ASYNC109
 ) -> Callable[
     _DecoratorArgs, Coroutine[Any, Any, list[BroadcastResponse[_DecoratorReturn] | MissingAnswer] | None]
 ]:

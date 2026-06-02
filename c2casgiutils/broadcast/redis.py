@@ -127,7 +127,7 @@ class RedisBroadcaster(interface.BaseBroadcaster):
         channel: str,
         params: Mapping[str, Any],
         expect_answers: bool,
-        timeout: float,
+        timeout: float,  # noqa: ASYNC109
     ) -> list[Any] | None:
         """Broadcast a message to all the listeners."""
         _LOG.debug("Broadcasting on %s with params: %s", channel, params)
@@ -140,7 +140,7 @@ class RedisBroadcaster(interface.BaseBroadcaster):
         self,
         channel: str,
         params: Mapping[str, Any] | None,
-        timeout: float,
+        timeout: float,  # noqa: ASYNC109
     ) -> list[Any]:
         answers = []
 

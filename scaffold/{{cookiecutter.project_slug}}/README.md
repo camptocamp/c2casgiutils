@@ -7,7 +7,7 @@
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-- Python 3.10+
+- Python 3.11+
 
 ### Development
 

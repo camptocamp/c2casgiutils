@@ -25,7 +25,7 @@ class LocalBroadcaster(interface.BaseBroadcaster):
         channel: str,
         params: Mapping[str, Any],
         expect_answers: bool,
-        timeout: float,
+        timeout: float,  # noqa: ASYNC109
     ) -> list[Any] | None:
         """Broadcast a message to all the listeners."""
         del timeout  # Not used

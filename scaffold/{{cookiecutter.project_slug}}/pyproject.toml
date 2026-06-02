@@ -5,7 +5,7 @@ version = "0.1.0"
 description = "{{cookiecutter.project_description}}"
 authors = [{name = "Camptocamp", email = "info@camptocamp.com"}]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
 	"c2casgiutils[all]",
 	"fastapi[standard]",
@@ -21,7 +21,7 @@ dev = [
 
 [tool.ruff]
 line-length = 110
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 # See: https://docs.astral.sh/ruff/rules/

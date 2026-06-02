@@ -336,8 +336,8 @@ def _set_jwt_cookie(
 
     jwt_payload = {
         **payload,
-        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=expiration),
-        "iat": datetime.datetime.now(datetime.timezone.utc),
+        "exp": datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=expiration),
+        "iat": datetime.datetime.now(datetime.UTC),
     }
     response.set_cookie(
         key=cookie_name,
