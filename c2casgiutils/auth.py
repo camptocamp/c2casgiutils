@@ -10,7 +10,7 @@ import jwt
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyHeader, APIKeyQuery
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from c2casgiutils.config import settings
 
@@ -59,6 +59,39 @@ class AuthInfo(BaseModel):
     is_logged_in: bool
     user: UserInfo
     session_payload: GitHubSessionPayload | None = Field(default=None, exclude=True)
+
+
+class AccessContext:
+    """Request-scoped authentication context for access checks."""
+
+    def __init__(self, auth_info: AuthInfo, request: Request, response: Response) -> None:
+        self.auth_info = auth_info
+        self.request = request
+        self.response = response
+
+    async def check_access(self, auth_config: AuthConfig) -> bool:
+        """Check whether the current user has access to the configured repository."""
+        return await check_access(self.auth_info, auth_config, request=self.request, response=self.response)
+
+    async def check_admin_access(self) -> bool:
+        """Check whether the current user has admin access."""
+        return await check_admin_access(self.auth_info, request=self.request, response=self.response)
+
+    async def require_access(self, auth_config: AuthConfig) -> None:
+        """Require access to the configured repository or raise HTTP 403."""
+        if not await self.check_access(auth_config):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to this resource",
+            )
+
+    async def require_admin_access(self) -> None:
+        """Require admin access or raise HTTP 403."""
+        if not await self.check_admin_access():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have admin access to this resource",
+            )
 
 
 async def _is_auth_secret(
@@ -245,10 +278,18 @@ async def _is_auth_user_github(request: Request, response: Response) -> AuthInfo
         response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
         raise HTTPException(401, "Invalid session") from jwt_exception
 
+    session_payload: GitHubSessionPayload | None = None
+    if user_payload is not None:
+        try:
+            session_payload = GitHubSessionPayload.model_validate(user_payload)
+        except ValidationError as validation_exception:
+            response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
+            raise HTTPException(401, "Invalid session") from validation_exception
+
     auth_info = AuthInfo(
         is_logged_in=user_payload is not None,
         user=UserInfo(**(user_payload or {})),
-        session_payload=user_payload,
+        session_payload=session_payload,
     )
 
     if not auth_info.is_logged_in:
@@ -285,6 +326,23 @@ async def get_auth(request: Request, response: Response) -> AuthInfo:
         return await _is_auth_user_github(request, response)
 
     return AuthInfo(is_logged_in=False, user=UserInfo())
+
+
+async def get_access_context(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request,
+    response: Response,
+) -> AccessContext:
+    """
+    Build an injectable access context for the current request.
+
+    Usage:
+        @app.get("/protected")
+        async def protected_route(access_context: Annotated[AccessContext, Depends(get_access_context)]):
+            await access_context.require_access(AuthConfig(github_repository="org/repo", github_access_type="admin"))
+            return {"message": "You have access"}
+    """
+    return AccessContext(auth_info, request, response)
 
 
 async def auth_required(auth_info: Annotated[AuthInfo, Depends(get_auth)]) -> None:
@@ -451,11 +509,8 @@ async def require_access(
             )
             return {"message": "You have access"}
     """
-    if not await check_access(auth_info, auth_config, request=request, response=response):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this resource",
-        )
+    access_context = AccessContext(auth_info, request, response)
+    await access_context.require_access(auth_config)
 
 
 async def require_admin_access(
@@ -470,11 +525,8 @@ async def require_admin_access(
         async def admin_protected_route(_: Annotated[bool, Depends(require_admin_access)]):
             return {"message": "You have admin access"}
     """
-    if not await check_admin_access(auth_info, request=request, response=response):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have admin access to this resource",
-        )
+    access_context = AccessContext(auth_info, request, response)
+    await access_context.require_admin_access()
 
 
 def is_enabled() -> bool:
