@@ -81,7 +81,7 @@ version = "0.0.0"
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
 fastapi = {extras = ["standard"], version = "0.136.3", optional=true}
-pydantic-settings = "2.14.1"
+pydantic-settings = "2.14.2"
 aiofile = "3.11.1"
 prometheus-client = "0.25.0"
 prometheus-fastapi-instrumentator = {version="7.1.0", optional=true}
