@@ -893,6 +893,12 @@ GitHub state cookie name
 
 GitHub state cookie age in seconds (default: 10 minutes)
 
+### `C2C__AUTH__GITHUB__ACCESS_TOKEN_EXPIRATION_MARGIN`
+
+*Optional*, default value: `PT1M`
+
+Safety margin applied before checking GitHub access token expiration. Accepts ISO 8601 durations (e.g.: `PT1M` for 1 minute).
+
 ### `C2C__AUTH__TEST__USERNAME`
 
 *Optional*, default value: `None`
