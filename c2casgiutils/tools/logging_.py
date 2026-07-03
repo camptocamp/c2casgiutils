@@ -145,4 +145,4 @@ async def _list_overrides() -> AsyncGenerator[OverrideResponse, None]:
             level = await slave.get(key)
             name = key[len(config.settings.tools.logging.redis_prefix) :]
             if level is not None:
-                yield OverrideResponse(name=name, level=level)
+                yield OverrideResponse(name=name, level=level.decode() if isinstance(level, bytes) else level)
