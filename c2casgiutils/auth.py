@@ -3,14 +3,14 @@ import logging
 import secrets
 import urllib.parse
 from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, cast
 
 import aiohttp
 import jwt
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyHeader, APIKeyQuery
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError
 
 from c2casgiutils.config import settings
 
@@ -45,11 +45,53 @@ class UserInfo(BaseModel):
     token: str = ""
 
 
+class GitHubSessionPayload(UserInfo):
+    """Typed payload stored in the GitHub auth session cookie."""
+
+    access_token_expires_at: int | None = None
+    refresh_token: str | None = None
+    refresh_token_expires_at: int | None = None
+
+
 class AuthInfo(BaseModel):
     """Details about the authentication status and user information."""
 
     is_logged_in: bool
     user: UserInfo
+    session_payload: GitHubSessionPayload | None = Field(default=None, exclude=True)
+
+
+class AccessContext:
+    """Request-scoped authentication context for access checks."""
+
+    def __init__(self, auth_info: AuthInfo, request: Request, response: Response) -> None:
+        self.auth_info = auth_info
+        self.request = request
+        self.response = response
+
+    async def check_access(self, auth_config: AuthConfig) -> bool:
+        """Check whether the current user has access to the configured repository."""
+        return await check_access(self.auth_info, auth_config, request=self.request, response=self.response)
+
+    async def check_admin_access(self) -> bool:
+        """Check whether the current user has admin access."""
+        return await check_admin_access(self.auth_info, request=self.request, response=self.response)
+
+    async def require_access(self, auth_config: AuthConfig) -> None:
+        """Require access to the configured repository or raise HTTP 403."""
+        if not await self.check_access(auth_config):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to this resource",
+            )
+
+    async def require_admin_access(self) -> None:
+        """Require admin access or raise HTTP 403."""
+        if not await self.check_admin_access():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have admin access to this resource",
+            )
 
 
 async def _is_auth_secret(
@@ -93,7 +135,129 @@ async def _is_auth_secret(
     return False
 
 
-async def _is_auth_user_github(request: Request) -> AuthInfo:
+def _logout_user(request: Request, response: Response, auth_info: AuthInfo) -> None:
+    """Clear authentication cookie and reset auth information."""
+    response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
+    auth_info.is_logged_in = False
+    auth_info.user = UserInfo()
+    auth_info.session_payload = None
+
+
+def _now_utc_timestamp() -> int:
+    """Get the current UTC timestamp in seconds."""
+    return int(datetime.datetime.now(datetime.UTC).timestamp())
+
+
+def _is_expired(expiration_timestamp: float | None) -> bool:
+    """Check if a token expiration timestamp is considered expired with margin."""
+    if expiration_timestamp is None:
+        return False
+    return _now_utc_timestamp() + int(
+        settings.auth.github.access_token_expiration_margin.total_seconds()
+    ) >= int(expiration_timestamp)
+
+
+def _apply_token_lifetimes(payload: GitHubSessionPayload, token: dict[str, Any]) -> None:
+    """Apply token expiration fields from an OAuth response payload."""
+    now = _now_utc_timestamp()
+
+    expires_in = token.get("expires_in")
+    if isinstance(expires_in, int | float):
+        payload.access_token_expires_at = now + int(expires_in)
+    else:
+        payload.access_token_expires_at = None
+
+    refresh_token = token.get("refresh_token")
+    if isinstance(refresh_token, str) and refresh_token:
+        payload.refresh_token = refresh_token
+
+    refresh_token_expires_in = token.get("refresh_token_expires_in")
+    if isinstance(refresh_token_expires_in, int | float):
+        payload.refresh_token_expires_at = now + int(refresh_token_expires_in)
+    elif isinstance(refresh_token, str) and refresh_token:
+        payload.refresh_token_expires_at = None
+
+
+async def _refresh_github_access_token(refresh_token: str) -> dict[str, Any] | None:
+    """Try to refresh a GitHub access token."""
+    token_url = settings.auth.github.token_url
+    token_data = {
+        "client_id": settings.auth.github.client_id,
+        "client_secret": settings.auth.github.client_secret,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+    }
+    headers = {"Accept": "application/json"}
+
+    try:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
+                token_url,
+                data=token_data,
+                headers=headers,
+            ) as response_token,
+        ):
+            if response_token.status != 200:
+                _LOG.info("Unable to refresh GitHub token: %s", await response_token.text())
+                return None
+            token_raw = await response_token.json()
+            if not isinstance(token_raw, dict):
+                _LOG.warning("Invalid refreshed token payload: expected object")
+                return None
+            token = cast("dict[str, Any]", token_raw)
+    except (aiohttp.ClientError, TimeoutError, ValueError) as exception:
+        _LOG.warning("Unable to refresh GitHub token", exc_info=exception)
+        return None
+
+    token_type = token.get("token_type")
+    if token_type is None or token_type.lower() != "bearer":
+        _LOG.warning("Invalid refreshed token type: %r", token_type)
+        return None
+    if not isinstance(token.get("access_token"), str) or not token["access_token"]:
+        _LOG.warning("Invalid refreshed token payload: missing access_token")
+        return None
+    return token
+
+
+async def _ensure_valid_github_token(
+    request: Request,
+    response: Response,
+    auth_info: AuthInfo,
+) -> bool:
+    """Ensure a valid GitHub token is available, refresh or logout if needed."""
+    if not auth_info.is_logged_in:
+        return False
+
+    payload = auth_info.session_payload
+    if payload is None:
+        return False
+
+    if not _is_expired(payload.access_token_expires_at):
+        return True
+
+    refresh_token = payload.refresh_token
+    if not refresh_token:
+        _logout_user(request, response, auth_info)
+        return False
+    if _is_expired(payload.refresh_token_expires_at):
+        _logout_user(request, response, auth_info)
+        return False
+
+    token = await _refresh_github_access_token(refresh_token)
+    if token is None:
+        _logout_user(request, response, auth_info)
+        return False
+
+    payload.token = token["access_token"]
+    _apply_token_lifetimes(payload, token)
+    _set_jwt_cookie(request, response, payload=payload.model_dump(exclude_none=True))
+    auth_info.user.token = token["access_token"]
+    auth_info.session_payload = payload
+    return True
+
+
+async def _is_auth_user_github(request: Request, response: Response) -> AuthInfo:
     if settings.auth.test.username is not None:
         # For testing purposes, we can return a fake user
         return AuthInfo(
@@ -108,10 +272,31 @@ async def _is_auth_user_github(request: Request) -> AuthInfo:
     try:
         user_payload = _get_jwt_cookie(request)
     except jwt.ExpiredSignatureError as jwt_exception:
+        response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
         raise HTTPException(401, "Expired session") from jwt_exception
     except jwt.InvalidTokenError as jwt_exception:
+        response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
         raise HTTPException(401, "Invalid session") from jwt_exception
-    return AuthInfo(is_logged_in=user_payload is not None, user=UserInfo(**(user_payload or {})))
+
+    session_payload: GitHubSessionPayload | None = None
+    if user_payload is not None:
+        try:
+            session_payload = GitHubSessionPayload.model_validate(user_payload)
+        except ValidationError as validation_exception:
+            response.delete_cookie(key=settings.auth.jwt.cookie.name, path=_get_jwt_cookie_path(request))
+            raise HTTPException(401, "Invalid session") from validation_exception
+
+    auth_info = AuthInfo(
+        is_logged_in=user_payload is not None,
+        user=UserInfo(**(user_payload or {})),
+        session_payload=session_payload,
+    )
+
+    if not auth_info.is_logged_in:
+        return auth_info
+
+    await _ensure_valid_github_token(request, response, auth_info)
+    return auth_info
 
 
 async def get_auth(request: Request, response: Response) -> AuthInfo:
@@ -138,9 +323,26 @@ async def get_auth(request: Request, response: Response) -> AuthInfo:
     if auth_type_ == AuthenticationType.SECRET:
         return AuthInfo(is_logged_in=await _is_auth_secret(request, response), user=UserInfo())
     if auth_type_ == AuthenticationType.GITHUB:
-        return await _is_auth_user_github(request)
+        return await _is_auth_user_github(request, response)
 
     return AuthInfo(is_logged_in=False, user=UserInfo())
+
+
+async def get_access_context(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request,
+    response: Response,
+) -> AccessContext:
+    """
+    Build an injectable access context for the current request.
+
+    Usage:
+        @app.get("/protected")
+        async def protected_route(access_context: Annotated[AccessContext, Depends(get_access_context)]):
+            await access_context.require_access(AuthConfig(github_repository="org/repo", github_access_type="admin"))
+            return {"message": "You have access"}
+    """
+    return AccessContext(auth_info, request, response)
 
 
 async def auth_required(auth_info: Annotated[AuthInfo, Depends(get_auth)]) -> None:
@@ -202,6 +404,8 @@ async def startup(main_app: FastAPI) -> None:
 async def check_access(
     auth_info: Annotated[AuthInfo, Depends(get_auth)],
     auth_config: AuthConfig,
+    request: Request | None = None,
+    response: Response | None = None,
 ) -> bool:
     """
     Check if the user has access to the resource.
@@ -211,13 +415,22 @@ async def check_access(
     if not auth_info.is_logged_in:
         return False
 
-    if await check_admin_access(auth_info):
+    if await check_admin_access(auth_info, request=request, response=response):
         return True
 
-    return await check_access_config(auth_info, auth_config)
+    return await check_access_config(
+        auth_info,
+        auth_config,
+        request=request,
+        fastapi_response=response,
+    )
 
 
-async def check_admin_access(auth_info: Annotated[AuthInfo, Depends(get_auth)]) -> bool:
+async def check_admin_access(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request | None = None,
+    response: Response | None = None,
+) -> bool:
     """Check if the user has admin access to the resource."""
     if not auth_info.is_logged_in:
         return False
@@ -225,12 +438,19 @@ async def check_admin_access(auth_info: Annotated[AuthInfo, Depends(get_auth)]) 
     if auth_type() != AuthenticationType.GITHUB:
         return True
 
-    return await check_access_config(auth_info, ADMIN_AUTH_CONFIG)
+    return await check_access_config(
+        auth_info,
+        ADMIN_AUTH_CONFIG,
+        request=request,
+        fastapi_response=response,
+    )
 
 
 async def check_access_config(
     auth_info: Annotated[AuthInfo, Depends(get_auth)],
     auth_config: AuthConfig,
+    request: Request | None = None,
+    fastapi_response: Response | None = None,
 ) -> bool:
     """Check if the user has access to the resource."""
     if not auth_info.is_logged_in:
@@ -248,9 +468,17 @@ async def check_access_config(
         session.get(
             f"{repo_url}/{auth_config.github_repository}",
             headers=headers,
-        ) as response,
+        ) as github_response,
     ):
-        repository = await response.json()
+        if github_response.status == 401:
+            if request is not None and fastapi_response is not None:
+                _logout_user(request, fastapi_response, auth_info)
+            else:
+                auth_info.is_logged_in = False
+                auth_info.user = UserInfo()
+                auth_info.session_payload = None
+            return False
+        repository = await github_response.json()
         return not (
             "permissions" not in repository
             or repository["permissions"][auth_config.github_access_type] is not True
@@ -260,26 +488,35 @@ async def check_access_config(
 async def require_access(
     auth_info: Annotated[AuthInfo, Depends(get_auth)],
     auth_config: AuthConfig,
+    request: Request,
+    response: Response,
 ) -> None:
     """
     FastAPI dependency that requires GitHub repository access.
 
     Usage:
         @app.get("/protected")
-        async def protected_route(_: Annotated[bool, Depends(
-            lambda auth: require_access(auth_info, {"github_repository": "org/repo", "github_access_type": "admin"})
-        )]):
+        async def protected_route(
+            auth_info: Annotated[AuthInfo, Depends(get_auth)],
+            request: Request,
+            response: Response,
+        ):
+            await require_access(
+                auth_info,
+                AuthConfig(github_repository="org/repo", github_access_type="admin"),
+                request,
+                response,
+            )
             return {"message": "You have access"}
     """
-    if not await check_access(auth_info, auth_config):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this resource",
-        )
+    access_context = AccessContext(auth_info, request, response)
+    await access_context.require_access(auth_config)
 
 
 async def require_admin_access(
     auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request,
+    response: Response,
 ) -> None:
     """FastAPI dependency that requires admin access.
 
@@ -288,11 +525,8 @@ async def require_admin_access(
         async def admin_protected_route(_: Annotated[bool, Depends(require_admin_access)]):
             return {"message": "You have admin access"}
     """
-    if not await check_admin_access(auth_info):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have admin access to this resource",
-        )
+    access_context = AccessContext(auth_info, request, response)
+    await access_context.require_admin_access()
 
 
 def is_enabled() -> bool:
@@ -673,7 +907,9 @@ if _auth_type == AuthenticationType.GITHUB:
             url=user["html_url"],
             token=token["access_token"],
         )
-        _set_jwt_cookie(request, response, payload=user_information.model_dump())
+        payload = GitHubSessionPayload(**user_information.model_dump())
+        _apply_token_lifetimes(payload, token)
+        _set_jwt_cookie(request, response, payload=payload.model_dump(exclude_none=True))
 
         # Redirect to success page or front page
         redirect_after_login = came_from or str(request.url_for("c2c_index"))

@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Async I/O compliance**: Replaced `aiofiles` usage in CLI logging config loading with `anyio.Path`, and removed direct `aiofiles` dependency from project metadata.
+- **GitHub auth sessions**: GitHub OAuth sessions now attempt to refresh expired access tokens automatically. If refresh is unavailable or fails, the auth cookie is cleared so users are logged out instead of remaining logged-in without repository permissions.
+- **Auth dependency ergonomics**: Added injectable `AccessContext` helpers with the methods `require_access`, `require_admin_access`, `check_access` and `check_admin_access` to simplify route protection code.
+- **GitHub auth expiration**: Added a configurable token expiration safety margin with `C2C__AUTH__GITHUB__ACCESS_TOKEN_EXPIRATION_MARGIN` (ISO 8601 duration, default `PT1M`) and removed duplicate token-refresh checks inside `check_access_config`.
 
 ## [0.11.0] - 2026-04-17
 

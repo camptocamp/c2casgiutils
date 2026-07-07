@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 from pathlib import Path
@@ -120,6 +121,23 @@ class Sentry(BaseModel):
         return self
 
 
+class _IsoTimedelta(datetime.timedelta):
+    def __str__(self) -> str:
+        total_seconds = int(self.total_seconds())
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        parts = []
+        if hours > 0:
+            parts.append(f"{hours}H")
+        if minutes > 0:
+            parts.append(f"{minutes}M")
+        if seconds > 0:
+            parts.append(f"{seconds}S")
+
+        return f"PT{''.join(parts)}" if parts else "PT0S"
+
+
 class AuthGitHub(BaseModel):
     """GitHub Authentication settings."""
 
@@ -150,6 +168,24 @@ class AuthGitHub(BaseModel):
         int,
         Field(description="GitHub state cookie age in seconds (default: 10 minutes)"),
     ] = 10 * 60  # 10 minutes
+    access_token_expiration_margin: Annotated[
+        datetime.timedelta,
+        Field(
+            description=(
+                "Safety margin applied before checking GitHub access token expiration. "
+                "Accepts ISO 8601 durations (e.g.: `PT1M` for 1 minute)."
+            ),
+        ),
+    ] = _IsoTimedelta(minutes=1)
+
+    @field_validator("access_token_expiration_margin")
+    @classmethod
+    def validate_access_token_expiration_margin(cls, value: datetime.timedelta) -> datetime.timedelta:
+        """Validate that access_token_expiration_margin is not negative."""
+        if value < datetime.timedelta(0):
+            message = "C2C__AUTH__GITHUB__ACCESS_TOKEN_EXPIRATION_MARGIN must be >= PT0S"
+            raise ValueError(message)
+        return value
 
 
 class AuthJWTCookie(BaseModel):
