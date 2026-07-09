@@ -9,6 +9,6 @@ services:
       - C2C__HTTP=True
 
   redis:
-    image: redis:8.6.3
+    image: redis:8.8.0
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
