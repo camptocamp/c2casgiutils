@@ -121,7 +121,7 @@ all = ["fastapi[standard]", "alembic", "sqlalchemy", "prometheus-fastapi-instrum
 
 [build-system]
 requires = [
-  "poetry-core==2.4.1",
+  "poetry-core==2.4.0",
   "poetry-dynamic-versioning[plugin]==1.10.0",
 ]
 build-backend = "poetry.core.masonry.api"
