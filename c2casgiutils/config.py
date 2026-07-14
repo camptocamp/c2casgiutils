@@ -2,10 +2,11 @@ import datetime
 import logging
 import os
 from pathlib import Path
-from typing import Annotated, Literal, cast
+from typing import Annotated, Any, Literal, cast
 
+import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,9 +21,21 @@ class Redis(BaseModel):
         ),
     ] = None
     options: Annotated[
-        str | None,
+        dict[str, Any],
+        NoDecode,
         Field(description="Redis connection options, e.g. 'socket_timeout=5,ssl=True'."),
-    ] = None
+    ] = {}
+
+    @field_validator("options", mode="before")
+    @classmethod
+    def parse_options(cls, value: str | dict[str, Any] | None) -> dict[str, Any]:
+        """Parse the options string into a dictionary."""
+        if value is None or isinstance(value, dict):
+            return value or {}
+        return {
+            e[: e.index("=")]: yaml.safe_load(e[e.index("=") + 1 :]) for e in value.split(",") if e.strip()
+        }
+
     sentinels: Annotated[
         str | None,
         Field(

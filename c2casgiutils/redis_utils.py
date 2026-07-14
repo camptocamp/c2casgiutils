@@ -4,7 +4,6 @@ from typing import Optional
 import redis.asyncio.client
 import redis.asyncio.sentinel
 import redis.exceptions
-import yaml
 
 from c2casgiutils.config import settings
 
@@ -39,16 +38,7 @@ def _init() -> None:
     global _master, _slave, _sentinel  # noqa: PLW0603
     sentinels = settings.redis.sentinels
     url = settings.redis.url
-    redis_options_ = settings.redis.options
-
-    redis_options = (
-        {}
-        if redis_options_ is None
-        else {
-            e[0 : e.index("=")]: yaml.load(e[e.index("=") + 1 :], Loader=yaml.SafeLoader)
-            for e in redis_options_.split(",")
-        }
-    )
+    redis_options = settings.redis.options or {}
 
     if sentinels:
         db = int(settings.redis.db)
@@ -63,12 +53,14 @@ def _init() -> None:
             db=db,
             **redis_options,
         )
-        _LOG.info("Redis setup using: %s, %s, %s", sentinels, service_name, redis_options_)
+        _LOG.info(
+            "Redis setup using: %s, %s, %s", sentinels, settings.redis.servicename, settings.redis.options
+        )
         _master = _sentinel.master_for(service_name)
         _slave = _sentinel.slave_for(service_name)
         return
     if url:
-        _LOG.info("Redis setup using: %s, with options: %s", url, redis_options_)
+        _LOG.info("Redis setup using: %s, with options: %s", url, settings.redis.options)
         _master = redis.asyncio.client.Redis.from_url(url, decode_responses=True, **redis_options)
         _slave = _master
     else:

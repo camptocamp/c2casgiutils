@@ -132,3 +132,17 @@ def test_auth_github_access_token_expiration_margin_from_environment(clean_env):
     settings = Settings()
 
     assert settings.auth.github.access_token_expiration_margin == datetime.timedelta(minutes=2, seconds=30)
+
+
+def test_redis_options_none():
+    settings = Settings()
+
+    assert settings.redis.options == {}
+
+
+def test_redis_options_from_environment(clean_env):
+    os.environ["C2C__REDIS__OPTIONS"] = "socket_timeout=5,ssl=True"
+
+    settings = Settings()
+
+    assert settings.redis.options == {"socket_timeout": 5, "ssl": True}

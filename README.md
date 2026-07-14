@@ -585,7 +585,7 @@ Redis connection URL
 
 ### `C2C__REDIS__OPTIONS`
 
-*Optional*, default value: `None`
+*Optional*, default value: `{}`
 
 Redis connection options, e.g. 'socket_timeout=5,ssl=True'.
 
