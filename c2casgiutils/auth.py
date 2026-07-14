@@ -549,7 +549,7 @@ def _set_jwt_cookie(
     response: Response,
     payload: dict[str, Any],
     cookie_name: str = settings.auth.jwt.cookie.name,
-    expiration: int = settings.auth.jwt.cookie.age,
+    expiration: int = int(settings.auth.jwt.cookie.age.total_seconds()),
     path: str | None = None,
     same_site: Literal["lax", "strict", "none"] = settings.auth.jwt.cookie.same_site,
 ) -> None:
@@ -786,7 +786,7 @@ if _auth_type == AuthenticationType.GITHUB:
                 "oauth_state": state,
             },
             cookie_name=settings.auth.github.state_cookie,
-            expiration=settings.auth.github.state_cookie_age,
+            expiration=int(settings.auth.github.state_cookie_age.total_seconds()),
             path=request.url_for("c2c_github_callback").path,
         )
 

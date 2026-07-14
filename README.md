@@ -585,7 +585,7 @@ Redis connection URL
 
 ### `C2C__REDIS__OPTIONS`
 
-*Optional*, default value: `None`
+*Optional*, default value: `{}`
 
 Redis connection options, e.g. 'socket_timeout=5,ssl=True'.
 
@@ -789,9 +789,9 @@ Authentication cookie name
 
 ### `C2C__AUTH__JWT__COOKIE__AGE`
 
-*Optional*, default value: `604800`
+*Optional*, default value: `PT168H`
 
-Authentication cookie age in seconds (default: 7 days)
+Authentication cookie age (default: 7 days)
 
 ### `C2C__AUTH__JWT__COOKIE__SAME_SITE`
 
@@ -889,15 +889,15 @@ GitHub state cookie name
 
 ### `C2C__AUTH__GITHUB__STATE_COOKIE_AGE`
 
-*Optional*, default value: `600`
+*Optional*, default value: `PT10M`
 
-GitHub state cookie age in seconds (default: 10 minutes)
+GitHub state cookie age (default: 10 minutes)
 
 ### `C2C__AUTH__GITHUB__ACCESS_TOKEN_EXPIRATION_MARGIN`
 
 *Optional*, default value: `PT1M`
 
-Safety margin applied before checking GitHub access token expiration. Accepts ISO 8601 durations (e.g.: `PT1M` for 1 minute).
+Safety margin applied before checking GitHub access token expiration. Accepts ISO 8601 durations (e.g.: `PT1M`), short format (e.g.: `10m`), or seconds (e.g.: `300`).
 
 ### `C2C__AUTH__TEST__USERNAME`
 

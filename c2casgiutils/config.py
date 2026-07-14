@@ -1,11 +1,13 @@
 import datetime
 import logging
 import os
+import re
 from pathlib import Path
-from typing import Annotated, Literal, cast
+from typing import Annotated, Any, Literal, cast
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import yaml
+from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,9 +22,21 @@ class Redis(BaseModel):
         ),
     ] = None
     options: Annotated[
-        str | None,
+        dict[str, Any],
+        NoDecode,
         Field(description="Redis connection options, e.g. 'socket_timeout=5,ssl=True'."),
-    ] = None
+    ] = {}
+
+    @field_validator("options", mode="before")
+    @classmethod
+    def parse_options(cls, value: str | dict[str, Any] | None) -> dict[str, Any]:
+        """Parse the options string into a dictionary."""
+        if value is None or isinstance(value, dict):
+            return value or {}
+        return {
+            e[: e.index("=")]: yaml.safe_load(e[e.index("=") + 1 :]) for e in value.split(",") if e.strip()
+        }
+
     sentinels: Annotated[
         str | None,
         Field(
@@ -138,6 +152,61 @@ class _IsoTimedelta(datetime.timedelta):
         return f"PT{''.join(parts)}" if parts else "PT0S"
 
 
+_ISO_DURATION_RE = re.compile(
+    r"^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$",
+)
+
+
+def _unit_to_name(unit: str) -> str:
+    return {"w": "weeks", "d": "days", "h": "hours", "m": "minutes", "s": "seconds"}[unit]
+
+
+def _next_unit(unit: str) -> str:
+    order = ["w", "d", "h", "m", "s"]
+    idx = order.index(unit)
+    return _unit_to_name(order[idx + 1]) if idx + 1 < len(order) else "seconds"
+
+
+def parse_duration(text: str | datetime.timedelta) -> datetime.timedelta:
+    """
+    Parse a duration string to a timedelta.
+
+    Supports ISO 8601 duration format (e.g. PT3H, P30D, PT600S) and
+    the short format (e.g. 2h30, 2m30, 1d, 1w, 1w2d3h4m5s).
+    The supported units are: w (weeks), d (days), h (hours), m (minutes), s (seconds).
+    When the last number has no unit, it takes the next logical unit
+    (e.g. 2h30 = 2h30m, 2m30 = 2m30s).
+    A plain number string (e.g. "300") is treated as seconds.
+    """
+    if isinstance(text, datetime.timedelta):
+        return text
+    match = _ISO_DURATION_RE.match(text)
+    if match:
+        parts = match.groups()
+        return datetime.timedelta(
+            days=int(parts[2] or 0),
+            hours=int(parts[3] or 0),
+            minutes=int(parts[4] or 0),
+            seconds=float(parts[5] or 0),
+        )
+    segments = re.findall(r"(\d+)([wdhms])?", text)
+    if segments:
+        kwargs: dict[str, int] = {}
+        last_unit = "s"
+        for value, unit in segments:
+            if unit:
+                kwargs.setdefault(_unit_to_name(unit), int(value))
+                last_unit = unit
+            else:
+                kwargs.setdefault(_next_unit(last_unit), int(value))
+        return datetime.timedelta(**kwargs)
+    message = f"Invalid time delta: {text}"
+    raise ValueError(message)
+
+
+Duration = Annotated[datetime.timedelta, BeforeValidator(parse_duration)]
+
+
 class AuthGitHub(BaseModel):
     """GitHub Authentication settings."""
 
@@ -165,15 +234,15 @@ class AuthGitHub(BaseModel):
     proxy_url: Annotated[str | None, Field(description="GitHub proxy URL")] = None
     state_cookie: Annotated[str, Field(description="GitHub state cookie name")] = "c2c-state"
     state_cookie_age: Annotated[
-        int,
-        Field(description="GitHub state cookie age in seconds (default: 10 minutes)"),
-    ] = 10 * 60  # 10 minutes
+        Duration,
+        Field(description="GitHub state cookie age (default: 10 minutes)"),
+    ] = _IsoTimedelta(minutes=10)
     access_token_expiration_margin: Annotated[
-        datetime.timedelta,
+        Duration,
         Field(
             description=(
                 "Safety margin applied before checking GitHub access token expiration. "
-                "Accepts ISO 8601 durations (e.g.: `PT1M` for 1 minute)."
+                "Accepts ISO 8601 durations (e.g.: `PT1M`), short format (e.g.: `10m`), or seconds (e.g.: `300`)."
             ),
         ),
     ] = _IsoTimedelta(minutes=1)
@@ -193,9 +262,9 @@ class AuthJWTCookie(BaseModel):
 
     name: Annotated[str, Field(description="Authentication cookie name")] = "c2c-jwt-auth"
     age: Annotated[
-        int,
-        Field(description="Authentication cookie age in seconds (default: 7 days)"),
-    ] = 7 * 24 * 3600  # 7 days
+        Duration,
+        Field(description="Authentication cookie age (default: 7 days)"),
+    ] = _IsoTimedelta(days=7)
     same_site: Annotated[
         Literal["lax", "strict", "none"],
         Field(
