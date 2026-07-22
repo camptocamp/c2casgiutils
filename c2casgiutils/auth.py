@@ -903,7 +903,7 @@ if _auth_type == AuthenticationType.GITHUB:
 
         user_information = UserInfo(
             login=user["login"],
-            display_name=user["name"],
+            display_name=user.get("name") or user["login"],
             url=user["html_url"],
             token=token["access_token"],
         )
