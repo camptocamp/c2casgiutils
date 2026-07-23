@@ -6,6 +6,7 @@ from fastapi import Response
 from starlette.requests import Request
 
 from c2casgiutils import auth
+from c2casgiutils.config import GitHubAccessType
 
 
 def _request() -> Request:
@@ -19,6 +20,23 @@ def _request() -> Request:
             "raw_path": b"/",
             "query_string": b"",
             "headers": [],
+            "client": ("127.0.0.1", 1234),
+            "server": ("testserver", 80),
+        }
+    )
+
+
+def _request_with_auth_header(token: str) -> Request:
+    return Request(
+        {
+            "type": "http",
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": "/",
+            "raw_path": b"/",
+            "query_string": b"",
+            "headers": [(b"authorization", f"Bearer {token}".encode())],
             "client": ("127.0.0.1", 1234),
             "server": ("testserver", 80),
         }
@@ -166,7 +184,10 @@ async def test_check_access_config_denies_without_logout_when_missing_permission
 
         has_access = await auth.check_access_config(
             auth_info,
-            auth.AuthConfig(github_repository="camptocamp/tilecloud-chain", github_access_type="pull"),
+            auth.AuthConfig(
+                github_repository="camptocamp/tilecloud-chain",
+                github_access_type_read_only=GitHubAccessType.PULL,
+            ),
             request=_request(),
             fastapi_response=Response(),
         )
@@ -204,7 +225,10 @@ async def test_check_access_config_does_not_refresh_token(fixed_cookie_path):
 
         has_access = await auth.check_access_config(
             auth_info,
-            auth.AuthConfig(github_repository="camptocamp/tilecloud-chain", github_access_type="pull"),
+            auth.AuthConfig(
+                github_repository="camptocamp/tilecloud-chain",
+                github_access_type_read_only=GitHubAccessType.PULL,
+            ),
             request=_request(),
             fastapi_response=Response(),
         )
@@ -251,7 +275,10 @@ async def test_access_context_require_access_raises_forbidden():
 
     with pytest.raises(auth.HTTPException) as exception:
         await access_context.require_access(
-            auth.AuthConfig(github_repository="camptocamp/tilecloud-chain", github_access_type="pull")
+            auth.AuthConfig(
+                github_repository="camptocamp/tilecloud-chain",
+                github_access_type_read_only=GitHubAccessType.PULL,
+            )
         )
 
     assert exception.value.status_code == 403
@@ -287,3 +314,181 @@ async def test_is_auth_user_github_clears_cookie_on_invalid_jwt(fixed_cookie_pat
     assert "set-cookie" in response.headers
     assert f"{auth.settings.auth.jwt.cookie.name}=" in response.headers["set-cookie"]
     assert "Max-Age=0" in response.headers["set-cookie"]
+
+
+@pytest.mark.asyncio
+async def test_validate_github_token_success():
+    token = "valid-token"
+    user_response = Mock()
+    user_response.status = 200
+    user_response.json = AsyncMock(return_value={"login": "testuser", "name": "Test User"})
+
+    session = Mock()
+    get_cm = AsyncMock()
+    get_cm.__aenter__.return_value = user_response
+    get_cm.__aexit__.return_value = None
+    session.get.return_value = get_cm
+
+    session_cm = AsyncMock()
+    session_cm.__aenter__.return_value = session
+    session_cm.__aexit__.return_value = None
+
+    with patch("c2casgiutils.auth.aiohttp.ClientSession", return_value=session_cm):
+        login, name = await auth._validate_github_token(token)
+
+    assert login == "testuser"
+    assert name == "Test User"
+    session.get.assert_called_once_with(
+        "https://api.github.com/user",
+        headers={
+            "Authorization": "Bearer valid-token",
+            "Accept": "application/json",
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_validate_github_token_invalid():
+    token = "invalid-token"
+    user_response = Mock()
+    user_response.status = 401
+
+    session = Mock()
+    get_cm = AsyncMock()
+    get_cm.__aenter__.return_value = user_response
+    get_cm.__aexit__.return_value = None
+    session.get.return_value = get_cm
+
+    session_cm = AsyncMock()
+    session_cm.__aenter__.return_value = session
+    session_cm.__aexit__.return_value = None
+
+    with patch("c2casgiutils.auth.aiohttp.ClientSession", return_value=session_cm):
+        login, name = await auth._validate_github_token(token)
+
+    assert login is None
+    assert name is None
+
+
+@pytest.mark.asyncio
+async def test_validate_github_token_network_error():
+    with patch("c2casgiutils.auth.aiohttp.ClientSession", side_effect=aiohttp.ClientError("boom")):
+        login, name = await auth._validate_github_token("token")
+
+    assert login is None
+    assert name is None
+
+
+@pytest.mark.asyncio
+async def test_get_auth_with_bearer_token_success():
+    with patch(
+        "c2casgiutils.auth._validate_github_token", new=AsyncMock(return_value=("testuser", "Test User"))
+    ):
+        request = _request_with_auth_header("valid-token")
+        response = Response()
+        auth_info = await auth.get_auth(request, response)
+
+    assert auth_info.is_logged_in is True
+    assert auth_info.user.login == "testuser"
+    assert auth_info.user.display_name == "Test User"
+    assert auth_info.user.url == "https://github.com/testuser"
+    assert auth_info.user.token == "valid-token"
+
+
+@pytest.mark.asyncio
+async def test_get_auth_with_bearer_token_invalid():
+    with patch("c2casgiutils.auth._validate_github_token", new=AsyncMock(return_value=(None, None))):
+        request = _request_with_auth_header("invalid-token")
+        response = Response()
+        auth_info = await auth.get_auth(request, response)
+
+    assert auth_info.is_logged_in is False
+
+
+@pytest.mark.asyncio
+async def test_get_auth_with_bearer_token_no_github_config():
+    with patch(
+        "c2casgiutils.auth._validate_github_token", new=AsyncMock(return_value=("testuser", "Test User"))
+    ):
+        request = _request_with_auth_header("valid-token")
+        response = Response()
+        auth_info = await auth.get_auth(request, response)
+
+    assert auth_info.is_logged_in is True
+    assert auth_info.user.login == "testuser"
+
+
+@pytest.mark.asyncio
+async def test_check_read_only_access_returns_true_when_not_github_auth():
+    auth_info = auth.AuthInfo(
+        is_logged_in=True,
+        user=auth.UserInfo(login="test", token="token"),
+    )
+
+    has_access = await auth.check_read_only_access(auth_info)
+
+    assert has_access is True
+
+
+@pytest.mark.asyncio
+async def test_check_read_only_access_returns_false_when_not_logged_in():
+    auth_info = auth.AuthInfo(
+        is_logged_in=False,
+        user=auth.UserInfo(),
+    )
+
+    has_access = await auth.check_read_only_access(auth_info)
+
+    assert has_access is False
+
+
+@pytest.mark.asyncio
+async def test_check_read_write_access_returns_true_when_not_github_auth():
+    auth_info = auth.AuthInfo(
+        is_logged_in=True,
+        user=auth.UserInfo(login="test", token="token"),
+    )
+
+    has_access = await auth.check_read_write_access(auth_info)
+
+    assert has_access is True
+
+
+@pytest.mark.asyncio
+async def test_check_read_write_access_returns_false_when_not_logged_in():
+    auth_info = auth.AuthInfo(
+        is_logged_in=False,
+        user=auth.UserInfo(),
+    )
+
+    has_access = await auth.check_read_write_access(auth_info)
+
+    assert has_access is False
+
+
+@pytest.mark.asyncio
+async def test_access_context_require_read_only_access_raises_forbidden():
+    access_context = auth.AccessContext(
+        auth_info=auth.AuthInfo(is_logged_in=False, user=auth.UserInfo()),
+        request=_request(),
+        response=Response(),
+    )
+
+    with pytest.raises(auth.HTTPException) as exception:
+        await access_context.require_read_only_access()
+
+    assert exception.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_access_context_require_read_write_access_raises_forbidden():
+    access_context = auth.AccessContext(
+        auth_info=auth.AuthInfo(is_logged_in=False, user=auth.UserInfo()),
+        request=_request(),
+        response=Response(),
+    )
+
+    with pytest.raises(auth.HTTPException) as exception:
+        await access_context.require_read_write_access()
+
+    assert exception.value.status_code == 403

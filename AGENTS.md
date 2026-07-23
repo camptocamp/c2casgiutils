@@ -9,6 +9,10 @@ The project must use async-friendly I/O APIs to avoid blocking the event loop.
 - All disk or network operation must be done with async API; avoid blocking calls on the event loop.
 - Don't allow sequential `await` calls in loops; use e.g. `asyncio.gather` or `asyncio.TaskGroup`.
 
+## Dependency management
+
+This project uses Poetry, not uv. The `uv.lock` file should not be committed.
+
 ## Environment variables
 
 The environment variable should not be accessed directly (except the ones defined by another project); they should be defined in the `Settings` class in `c2casgiutils/config.py` and accessed through the `settings` object.
@@ -86,3 +90,5 @@ To check the code quality, use the `make prospector` command.
 ## Changelog
 
 The [changelog](./CHANGELOG.md) should respect the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) rules.
+
+Before modifying the changelog, check if a release has been made since the last edit by looking at the git tags and GitHub releases. If a release was made, add a new section for the `[Unreleased]` changes instead of modifying the released version's section.
