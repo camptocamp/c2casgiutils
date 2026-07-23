@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import re
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 
@@ -207,6 +208,14 @@ def parse_duration(text: str | datetime.timedelta) -> datetime.timedelta:
 Duration = Annotated[datetime.timedelta, BeforeValidator(parse_duration)]
 
 
+class GitHubAccessType(StrEnum):
+    """GitHub access type for repository permissions."""
+
+    PULL = "pull"
+    PUSH = "push"
+    ADMIN = "admin"
+
+
 class AuthGitHub(BaseModel):
     """GitHub Authentication settings."""
 
@@ -214,7 +223,18 @@ class AuthGitHub(BaseModel):
         str | None,
         Field(description="GitHub repository for authentication"),
     ] = None
-    access_type: Annotated[str, Field(description="GitHub access type")] = "pull"
+    access_type_read_only: Annotated[
+        GitHubAccessType,
+        Field(description="GitHub access type required for read-only operations"),
+    ] = GitHubAccessType.PULL
+    access_type_read_write: Annotated[
+        GitHubAccessType,
+        Field(description="GitHub access type required for read-write operations"),
+    ] = GitHubAccessType.PUSH
+    access_type_admin: Annotated[
+        GitHubAccessType,
+        Field(description="GitHub access type required for admin operations"),
+    ] = GitHubAccessType.ADMIN
     authorize_url: Annotated[
         str,
         Field(description="GitHub OAuth authorization URL"),

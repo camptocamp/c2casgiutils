@@ -2,7 +2,7 @@ import datetime
 import logging
 import secrets
 import urllib.parse
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Annotated, Any, Literal, cast
 
 import aiohttp
@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyHeader, APIKeyQuery
 from pydantic import BaseModel, Field, ValidationError
 
-from c2casgiutils.config import settings
+from c2casgiutils.config import GitHubAccessType, settings
 
 _LOG = logging.getLogger(__name__)
 
@@ -26,13 +26,27 @@ class AuthConfig(BaseModel):
 
     # The repository to check access to (<organization>/<repository>).
     github_repository: str | None = None
-    # The type of access to check (admin|push|pull).
-    github_access_type: str | None = None
+    # The type of access to check for read-only operations (pull|push|admin).
+    github_access_type_read_only: GitHubAccessType | None = None
+    # The type of access to check for read-write operations (pull|push|admin).
+    github_access_type_read_write: GitHubAccessType | None = None
+    # The type of access to check for admin operations (pull|push|admin).
+    github_access_type_admin: GitHubAccessType | None = None
 
+
+READ_ONLY_AUTH_CONFIG = AuthConfig(
+    github_repository=settings.auth.github.repository,
+    github_access_type_read_only=settings.auth.github.access_type_read_only,
+)
+
+READ_WRITE_AUTH_CONFIG = AuthConfig(
+    github_repository=settings.auth.github.repository,
+    github_access_type_read_write=settings.auth.github.access_type_read_write,
+)
 
 ADMIN_AUTH_CONFIG = AuthConfig(
     github_repository=settings.auth.github.repository,
-    github_access_type="admin",
+    github_access_type_admin=settings.auth.github.access_type_admin,
 )
 
 
@@ -53,12 +67,23 @@ class GitHubSessionPayload(UserInfo):
     refresh_token_expires_at: int | None = None
 
 
+class AuthMethod(StrEnum):
+    """The method used by the current user to authenticate."""
+
+    NONE = "none"
+    SECRET = "secret"  # noqa: S105
+    GITHUB_OAUTH = "github_oauth"
+    GITHUB_BEARER = "github_bearer"
+    TEST = "test"
+
+
 class AuthInfo(BaseModel):
     """Details about the authentication status and user information."""
 
     is_logged_in: bool
     user: UserInfo
     session_payload: GitHubSessionPayload | None = Field(default=None, exclude=True)
+    type: AuthMethod = AuthMethod.NONE
 
 
 class AccessContext:
@@ -73,6 +98,14 @@ class AccessContext:
         """Check whether the current user has access to the configured repository."""
         return await check_access(self.auth_info, auth_config, request=self.request, response=self.response)
 
+    async def check_read_only_access(self) -> bool:
+        """Check whether the current user has read-only access."""
+        return await check_read_only_access(self.auth_info, request=self.request, response=self.response)
+
+    async def check_read_write_access(self) -> bool:
+        """Check whether the current user has read-write access."""
+        return await check_read_write_access(self.auth_info, request=self.request, response=self.response)
+
     async def check_admin_access(self) -> bool:
         """Check whether the current user has admin access."""
         return await check_admin_access(self.auth_info, request=self.request, response=self.response)
@@ -83,6 +116,22 @@ class AccessContext:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have access to this resource",
+            )
+
+    async def require_read_only_access(self) -> None:
+        """Require read-only access or raise HTTP 403."""
+        if not await self.check_read_only_access():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have read-only access to this resource",
+            )
+
+    async def require_read_write_access(self) -> None:
+        """Require read-write access or raise HTTP 403."""
+        if not await self.check_read_write_access():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have read-write access to this resource",
             )
 
     async def require_admin_access(self) -> None:
@@ -290,6 +339,7 @@ async def _is_auth_user_github(request: Request, response: Response) -> AuthInfo
         is_logged_in=user_payload is not None,
         user=UserInfo(**(user_payload or {})),
         session_payload=session_payload,
+        type=AuthMethod.GITHUB_OAUTH if user_payload is not None else AuthMethod.NONE,
     )
 
     if not auth_info.is_logged_in:
@@ -299,12 +349,52 @@ async def _is_auth_user_github(request: Request, response: Response) -> AuthInfo
     return auth_info
 
 
+async def _validate_github_token(token: str) -> tuple[str | None, str | None]:
+    """Validate a GitHub token and return (login, name) or (None, None)."""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+    user_url = settings.auth.github.user_url
+    try:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(user_url, headers=headers) as response,
+        ):
+            if response.status != 200:
+                return None, None
+            user = await response.json()
+            return user.get("login"), user.get("name")
+    except (aiohttp.ClientError, TimeoutError, ValueError) as exception:
+        _LOG.warning("Unable to validate GitHub token", exc_info=exception)
+        return None, None
+
+
 async def get_auth(request: Request, response: Response) -> AuthInfo:
     """
     Check if the client is authenticated.
 
     Returns: boolean to indicated if the user is authenticated, and a dictionary with user details.
     """
+    # Check for GitHub token authentication via Authorization: Bearer header
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        login, display_name = await _validate_github_token(token)
+        if login:
+            return AuthInfo(
+                is_logged_in=True,
+                user=UserInfo(
+                    login=login,
+                    display_name=display_name or login,
+                    url=f"https://github.com/{login}",
+                    token=token,
+                ),
+                type=AuthMethod.GITHUB_BEARER,
+            )
+        _LOG.warning("Invalid GitHub token in Authorization header")
+        return AuthInfo(is_logged_in=False, user=UserInfo())
+
     auth_type_ = auth_type()
     if auth_type_ == AuthenticationType.TEST:
         # For testing purposes, we can return a fake user
@@ -317,11 +407,15 @@ async def get_auth(request: Request, response: Response) -> AuthInfo:
                 url="https://example.com",
                 token="",  # nosec
             ),
+            type=AuthMethod.TEST,
         )
     if auth_type_ == AuthenticationType.NONE:
         return AuthInfo(is_logged_in=False, user=UserInfo())
     if auth_type_ == AuthenticationType.SECRET:
-        return AuthInfo(is_logged_in=await _is_auth_secret(request, response), user=UserInfo())
+        auth_info = AuthInfo(is_logged_in=await _is_auth_secret(request, response), user=UserInfo())
+        if auth_info.is_logged_in:
+            auth_info.type = AuthMethod.SECRET
+        return auth_info
     if auth_type_ == AuthenticationType.GITHUB:
         return await _is_auth_user_github(request, response)
 
@@ -339,7 +433,7 @@ async def get_access_context(
     Usage:
         @app.get("/protected")
         async def protected_route(access_context: Annotated[AccessContext, Depends(get_access_context)]):
-            await access_context.require_access(AuthConfig(github_repository="org/repo", github_access_type="admin"))
+            await access_context.require_access(AuthConfig(github_repository="org/repo", github_access_type_read_write="admin"))
             return {"message": "You have access"}
     """
     return AccessContext(auth_info, request, response)
@@ -426,12 +520,52 @@ async def check_access(
     )
 
 
+async def check_read_only_access(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request | None = None,
+    response: Response | None = None,
+) -> bool:
+    """Check if the user has read-only access to the resource."""
+    if not auth_info.is_logged_in:
+        return False
+
+    if auth_type() != AuthenticationType.GITHUB:
+        return True
+
+    return await check_access_config(
+        auth_info,
+        READ_ONLY_AUTH_CONFIG,
+        request=request,
+        fastapi_response=response,
+    )
+
+
+async def check_read_write_access(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request | None = None,
+    response: Response | None = None,
+) -> bool:
+    """Check if the user has read-write access to the resource."""
+    if not auth_info.is_logged_in:
+        return False
+
+    if auth_type() != AuthenticationType.GITHUB:
+        return True
+
+    return await check_access_config(
+        auth_info,
+        READ_WRITE_AUTH_CONFIG,
+        request=request,
+        fastapi_response=response,
+    )
+
+
 async def check_admin_access(
     auth_info: Annotated[AuthInfo, Depends(get_auth)],
     request: Request | None = None,
     response: Response | None = None,
 ) -> bool:
-    """Check if the user has admin access to the resource."""
+    """Check if the user has admin access."""
     if not auth_info.is_logged_in:
         return False
 
@@ -463,6 +597,9 @@ async def check_access_config(
         "Accept": "application/json",
     }
 
+    if not token:
+        return False
+
     async with (
         aiohttp.ClientSession() as session,
         session.get(
@@ -479,10 +616,22 @@ async def check_access_config(
                 auth_info.session_payload = None
             return False
         repository = await github_response.json()
-        return not (
-            "permissions" not in repository
-            or repository["permissions"][auth_config.github_access_type] is not True
-        )
+        if auth_config.github_access_type_admin is not None:
+            return not (
+                "permissions" not in repository
+                or repository["permissions"][auth_config.github_access_type_admin.value] is not True
+            )
+        if auth_config.github_access_type_read_write is not None:
+            return not (
+                "permissions" not in repository
+                or repository["permissions"][auth_config.github_access_type_read_write.value] is not True
+            )
+        if auth_config.github_access_type_read_only is not None:
+            return not (
+                "permissions" not in repository
+                or repository["permissions"][auth_config.github_access_type_read_only.value] is not True
+            )
+        return False
 
 
 async def require_access(
@@ -503,7 +652,7 @@ async def require_access(
         ):
             await require_access(
                 auth_info,
-                AuthConfig(github_repository="org/repo", github_access_type="admin"),
+                AuthConfig(github_repository="org/repo", github_access_type_read_write="admin"),
                 request,
                 response,
             )
@@ -511,6 +660,38 @@ async def require_access(
     """
     access_context = AccessContext(auth_info, request, response)
     await access_context.require_access(auth_config)
+
+
+async def require_read_only_access(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request,
+    response: Response,
+) -> None:
+    """FastAPI dependency that requires read-only access.
+
+    Usage:
+        @app.get("/read_only_protected")
+        async def read_only_protected_route(_: Annotated[bool, Depends(require_read_only_access)]):
+            return {"message": "You have read-only access"}
+    """
+    access_context = AccessContext(auth_info, request, response)
+    await access_context.require_read_only_access()
+
+
+async def require_read_write_access(
+    auth_info: Annotated[AuthInfo, Depends(get_auth)],
+    request: Request,
+    response: Response,
+) -> None:
+    """FastAPI dependency that requires read-write access.
+
+    Usage:
+        @app.get("/read_write_protected")
+        async def read_write_protected_route(_: Annotated[bool, Depends(require_read_write_access)]):
+            return {"message": "You have read-write access"}
+    """
+    access_context = AccessContext(auth_info, request, response)
+    await access_context.require_read_write_access()
 
 
 async def require_admin_access(

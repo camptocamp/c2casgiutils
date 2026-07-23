@@ -27,13 +27,13 @@ router.include_router(
     headers.router,
     prefix="/headers",
     tags=["c2c_headers"],
-    dependencies=[Depends(auth.require_admin_access)],
+    dependencies=[Depends(auth.require_read_only_access)],
 )
 router.include_router(
     logging_tools.router,
     prefix="/logging",
     tags=["c2c_logging"],
-    dependencies=[Depends(auth.require_admin_access)],
+    dependencies=[Depends(auth.require_read_only_access)],
 )
 
 
@@ -73,7 +73,7 @@ async def c2c_index(request: Request, auth_info: Annotated[auth.AuthInfo, Depend
             {
                 "request": request,
                 "is_auth": auth_info.is_logged_in,
-                "has_access": await auth.check_admin_access(auth_info),
+                "has_access": await auth.check_read_only_access(auth_info),
                 "user": auth_info.user,
                 "auth_type": auth.auth_type(),
                 "AuthenticationType": auth.AuthenticationType,

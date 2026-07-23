@@ -48,7 +48,7 @@ _set_level: _SetLevelFunction
 @router.get("/level")
 async def c2c_logging_level(
     name: Annotated[str, Query(description="Name of the logger to get the level for")],
-    _: Annotated[None, Depends(auth.require_admin_access)],
+    _: Annotated[None, Depends(auth.require_read_only_access)],
 ) -> LevelResponse:
     """Get the logging level."""
 
@@ -68,7 +68,7 @@ class _SetLevel(BaseModel):
 @router.post("/level")
 async def c2c_logging_set_level(
     level: _SetLevel,
-    _: Annotated[None, Depends(auth.require_admin_access)],
+    _: Annotated[None, Depends(auth.require_read_write_access)],
 ) -> LevelResponse:
     """Change the logging level."""
 
@@ -90,7 +90,7 @@ async def c2c_logging_set_level(
 
 @router.get("/overrides")
 async def c2c_logging_overrides(
-    _: Annotated[None, Depends(auth.require_admin_access)],
+    _: Annotated[None, Depends(auth.require_read_only_access)],
 ) -> OverridesResponse:
     """Get the logging overrides."""
 

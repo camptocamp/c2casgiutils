@@ -72,7 +72,7 @@ async def _c2c_headers(request: Request) -> HeadersResponse:
 @router.get("/")
 async def c2c_headers(
     request: Request,
-    _: Annotated[None, Depends(auth.require_admin_access)],
+    _: Annotated[None, Depends(auth.require_read_only_access)],
 ) -> HeadersResponse:
     """Get the headers of the request."""
 
@@ -84,7 +84,7 @@ async def c2c_headers_path(
     request: Request,
     path: str,
     param: Annotated[str | None, Query(description="An optional query parameter")] = None,
-    _: Annotated[None, Depends(auth.require_admin_access)] = None,
+    _: Annotated[None, Depends(auth.require_read_only_access)] = None,
 ) -> HeadersResponse:
     """Get the headers of the request with one path."""
     del path, param  # Unused path parameter, but required by FastAPI
@@ -99,7 +99,7 @@ async def c2c_headers_path2(
     path_2: str,
     param_1: Annotated[str | None, Query(description="An optional query parameter")] = None,
     param_2: Annotated[str | None, Query(description="A second optional query parameter")] = None,
-    _: Annotated[None, Depends(auth.require_admin_access)] = None,
+    _: Annotated[None, Depends(auth.require_read_only_access)] = None,
 ) -> HeadersResponse:
     """Get the headers of the request with two path."""
     del path_1, path_2, param_1, param_2  # Unused path parameters, but required by FastAPI
