@@ -70,6 +70,38 @@ class Prometheus(BaseModel):
     port: Annotated[int, Field(description="Port for Prometheus metrics")] = 9000
 
 
+def parse_comma_separated_list(value: str | list[str] | None) -> list[str]:
+    """Parse a comma-separated string into a list of strings."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [v.strip() for v in value if v.strip()]
+    return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def parse_comma_separated_int_list(value: str | list[int] | None) -> list[int]:
+    """Parse a comma-separated string into a list of ints."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [int(v) for v in value]
+    return [int(v.strip()) for v in value.split(",") if v.strip()]
+
+
+def parse_comma_separated_float_list(value: str | list[float] | None) -> list[float]:
+    """Parse a comma-separated string into a list of floats."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [float(v) for v in value]
+    return [float(v.strip()) for v in value.split(",") if v.strip()]
+
+
+StringList = Annotated[list[str], NoDecode, BeforeValidator(parse_comma_separated_list)]
+IntList = Annotated[list[int], NoDecode, BeforeValidator(parse_comma_separated_int_list)]
+FloatList = Annotated[list[float], NoDecode, BeforeValidator(parse_comma_separated_float_list)]
+
+
 class Sentry(BaseModel):
     """
     Sentry configuration.
@@ -83,7 +115,7 @@ class Sentry(BaseModel):
     environment: Annotated[str, Field(description="Sentry environment")] = "production"
     dist: Annotated[str | None, Field(description="Sentry distribution")] = None
     sample_rate: Annotated[float, Field(description="Sample rate for error events")] = 1.0
-    ignore_errors: Annotated[list[str], Field(description="List of exception class names to ignore")] = []
+    ignore_errors: Annotated[StringList, Field(description="List of exception class names to ignore")] = []
     max_breadcrumbs: Annotated[int, Field(description="Maximum number of breadcrumbs to capture")] = 100
     attach_stacktrace: Annotated[bool, Field(description="Attach stack trace to all messages")] = False
     send_default_pii: Annotated[bool | None, Field(description="Send default PII")] = None
@@ -97,11 +129,11 @@ class Sentry(BaseModel):
     server_name: Annotated[str | None, Field(description="Server name for Sentry events")] = None
     project_root: Annotated[str, Field(description="Root directory of the project")] = str(Path.cwd())
     in_app_include: Annotated[
-        list[str],
+        StringList,
         Field(description="List of module prefixes that are in the app"),
     ] = []
     in_app_exclude: Annotated[
-        list[str],
+        StringList,
         Field(description="List of module prefixes that are not in the app"),
     ] = []
     max_request_body_size: Annotated[str, Field(description="Maximum request body size to capture")] = (
@@ -382,7 +414,7 @@ class ProxyHeaders(BaseModel):
         ),
     ] = "none"
     trusted_hosts: Annotated[
-        list[str] | str,
+        StringList,
         Field(
             description=(
                 "Trusted proxy client hosts/networks. Accepts comma-separated string or list "
@@ -390,16 +422,6 @@ class ProxyHeaders(BaseModel):
             ),
         ),
     ] = ["127.0.0.1"]
-
-    @field_validator("trusted_hosts", mode="before")
-    @classmethod
-    def normalize_trusted_hosts(cls, value: list[str] | str | None) -> list[str]:
-        """Normalize trusted_hosts from env values to a list."""
-        if value is None:
-            return ["127.0.0.1"]
-        if isinstance(value, list):
-            return [v.strip() for v in value if v.strip()]
-        return [v.strip() for v in value.split(",") if v.strip()]
 
 
 class Settings(BaseSettings, extra="ignore"):
