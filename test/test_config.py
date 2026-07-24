@@ -3,7 +3,13 @@ import os
 
 import pytest
 
-from c2casgiutils.config import Settings, parse_duration
+from c2casgiutils.config import (
+    Settings,
+    parse_comma_separated_float_list,
+    parse_comma_separated_int_list,
+    parse_comma_separated_list,
+    parse_duration,
+)
 
 
 def test_parse_duration_iso():
@@ -192,3 +198,69 @@ def test_redis_options_from_environment(clean_env):
     settings = Settings()
 
     assert settings.redis.options == {"socket_timeout": 5, "ssl": True}
+
+
+def test_parse_comma_separated_list_none():
+    assert parse_comma_separated_list(None) == []
+
+
+def test_parse_comma_separated_list_list():
+    assert parse_comma_separated_list(["a", "b"]) == ["a", "b"]
+
+
+def test_parse_comma_separated_list_list_with_spaces():
+    assert parse_comma_separated_list([" a ", " b "]) == ["a", "b"]
+
+
+def test_parse_comma_separated_list_empty():
+    assert parse_comma_separated_list("") == []
+
+
+def test_parse_comma_separated_list_single():
+    assert parse_comma_separated_list("value") == ["value"]
+
+
+def test_parse_comma_separated_list_multiple():
+    assert parse_comma_separated_list("a,b,c") == ["a", "b", "c"]
+
+
+def test_parse_comma_separated_list_with_spaces():
+    assert parse_comma_separated_list("a, b, c") == ["a", "b", "c"]
+
+
+def test_sentry_ignore_errors_from_environment(clean_env):
+    os.environ["C2C__SENTRY__IGNORE_ERRORS"] = "ValueError,TypeError,RuntimeError"
+    settings = Settings()
+    assert settings.sentry.ignore_errors == ["ValueError", "TypeError", "RuntimeError"]
+
+
+def test_sentry_in_app_include_from_environment(clean_env):
+    os.environ["C2C__SENTRY__IN_APP_INCLUDE"] = "myapp,myapp2"
+    settings = Settings()
+    assert settings.sentry.in_app_include == ["myapp", "myapp2"]
+
+
+def test_sentry_in_app_exclude_from_environment(clean_env):
+    os.environ["C2C__SENTRY__IN_APP_EXCLUDE"] = "test,test2"
+    settings = Settings()
+    assert settings.sentry.in_app_exclude == ["test", "test2"]
+
+
+def test_proxy_headers_trusted_hosts_from_environment(clean_env):
+    os.environ["C2C__PROXY_HEADERS__TRUSTED_HOSTS"] = "127.0.0.1,10.0.0.0/8, 192.168.1.1"
+    settings = Settings()
+    assert settings.proxy_headers.trusted_hosts == ["127.0.0.1", "10.0.0.0/8", "192.168.1.1"]
+
+
+def test_parse_comma_separated_int_list():
+    assert parse_comma_separated_int_list("1,2,3") == [1, 2, 3]
+    assert parse_comma_separated_int_list("1, 2, 3") == [1, 2, 3]
+    assert parse_comma_separated_int_list(None) == []
+    assert parse_comma_separated_int_list([1, 2, 3]) == [1, 2, 3]
+
+
+def test_parse_comma_separated_float_list():
+    assert parse_comma_separated_float_list("1.5,2.5,3.5") == [1.5, 2.5, 3.5]
+    assert parse_comma_separated_float_list("1.5, 2.5, 3.5") == [1.5, 2.5, 3.5]
+    assert parse_comma_separated_float_list(None) == []
+    assert parse_comma_separated_float_list([1.5, 2.5, 3.5]) == [1.5, 2.5, 3.5]
