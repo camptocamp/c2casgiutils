@@ -72,6 +72,9 @@ format-jinja = """
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 
+[tool.tweak-poetry-dependencies-versions]
+default = "present"
+
 [project]
 classifiers = [
     'Development Status :: 5 - Production/Stable',
@@ -88,7 +91,7 @@ classifiers = [
     'Topic :: Internet :: WWW/HTTP :: WSGI :: Application',
     'Typing :: Typed',
 ]
-dynamic = ["dependencies", "version"]
+dynamic = ["version"]
 name = "c2casgiutils"
 description = "Common utilities for Camptocamp ASGI applications"
 readme = "README.md"
@@ -102,7 +105,7 @@ include = [
   "c2casgiutils/tools/templates/*",
 ]
 requires-python = ">=3.11"
-dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "prometheus-fastapi-instrumentator", "redis", "aiohttp", "pyjwt", "sentry-sdk[fastapi]", "anyio"]
+dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "prometheus-fastapi-instrumentator", "redis", "aiohttp", "pyjwt", "sentry-sdk[fastapi]", "anyio", "pyyaml"]
 
 [project.urls]
 Repository = "https://github.com/camptocamp/c2casgiutils"

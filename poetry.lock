@@ -2737,7 +2737,6 @@ files = [
     {file = "pyyaml-6.0.3-cp39-cp39-win_amd64.whl", hash = "sha256:2e71d11abed7344e42a8849600193d15b6def118602c4c176f748e4583246007"},
     {file = "pyyaml-6.0.3.tar.gz", hash = "sha256:d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f"},
 ]
-markers = {main = "extra == \"fastapi\" or extra == \"all\""}
 
 [[package]]
 name = "redis"
@@ -3859,4 +3858,4 @@ sqlalchemy = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "fc753974b0d79791d85eded1472e76ab5fb843eadd941b0fe49170a052270bf6"
+content-hash = "8a2a71daf63cf13723ab60d8f3bf9d3493d853f09187d4734160799df45ff7b4"
