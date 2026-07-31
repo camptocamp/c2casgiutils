@@ -1,3 +1,4 @@
+# Copyright (c) 2025-2026, Camptocamp SA
 import pytest
 import pytest_asyncio
 from pydantic import BaseModel
