@@ -1,3 +1,4 @@
+# Copyright (c) 2025-2026, Camptocamp SA
 from unittest.mock import AsyncMock, Mock, patch
 
 import aiohttp
