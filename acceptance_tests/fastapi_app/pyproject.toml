@@ -17,7 +17,7 @@ convention = "numpy"
 "**/*_test.py" = ["ANN", "ARG", "ASYNC", "BLE001", "D", "DTZ", "E722", "FBT003", "INP001", "N", "PGH003", "PLC", "PLR2004", "PLW0603", "PLW1641", "RET", "RUF012", "RUF100", "S104", "S105", "S106", "S108", "S113", "S324", "S603", "S607", "S608", "SLF", "TRY003", "TRY301"]
 
 [tool.build-system]
-requires = [ "poetry-core",]
+requires = [ "poetry-core==2.4.0" ]
 build-backend = "poetry.core.masonry.api"
 
 [[tool.poetry.packages]]
@@ -25,7 +25,7 @@ include = "fastapi_app"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4"
-fastapi = {version = "0.139.0", extras = ["standard"]}
+fastapi = {version = "0.139.2", extras = ["standard"]}
 python-multipart = "0.0.32"
 
 [tool.poetry.group.dev.dependencies]
