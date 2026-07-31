@@ -1,3 +1,4 @@
+# Copyright (c) 2025-2026, Camptocamp SA
 """Broadcast messages to all the processes of Gunicorn in every containers."""
 
 import asyncio
