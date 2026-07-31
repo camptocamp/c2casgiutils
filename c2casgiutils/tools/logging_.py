@@ -1,3 +1,4 @@
+# Copyright (c) 2025-2026, Camptocamp SA
 import logging
 from collections.abc import AsyncGenerator
 from typing import Annotated, Protocol
@@ -113,9 +114,9 @@ async def _restore_overrides() -> None:
             _LOGGER.info("Restoring logging level override for %s: %s", override.name, override.level)
             logging.getLogger(override.name).setLevel(override.level)
     except ImportError:
-        pass  # don't have redis
-    except Exception:  # noqa: BLE001
-        # survive an error there. Logging levels is not business critical...
+        pass  # Don't have redis
+    except Exception:  # noqa: BLE001, RUF100
+        # Survive an error there. Logging levels is not business critical...
         _LOGGER.warning("Cannot restore logging levels", exc_info=True)
 
 

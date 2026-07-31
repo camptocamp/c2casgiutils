@@ -1,3 +1,4 @@
+# Copyright (c) 2025-2026, Camptocamp SA
 import asyncio
 import json
 import logging
