@@ -25,7 +25,7 @@ include = "fastapi_app"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4"
-fastapi = {version = "0.139.0", extras = ["standard"]}
+fastapi = {version = "0.139.2", extras = ["standard"]}
 python-multipart = "0.0.32"
 
 [tool.poetry.group.dev.dependencies]
