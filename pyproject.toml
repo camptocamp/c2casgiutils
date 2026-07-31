@@ -24,7 +24,7 @@ version = "0.0.0"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
-fastapi = {extras = ["standard"], version = "0.139.2", optional=true}
+fastapi = {extras = ["standard"], version = "0.141.1", optional=true}
 pydantic-settings = "2.14.2"
 aiofile = "3.11.1"
 prometheus-client = "0.25.0"
