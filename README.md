@@ -827,11 +827,35 @@ Secret key for trivial authentication (not secure)
 
 GitHub repository for authentication
 
-### `C2C__AUTH__GITHUB__ACCESS_TYPE`
+### `C2C__AUTH__GITHUB__ACCESS_TYPE_READ_ONLY`
 
 *Optional*, default value: `pull`
 
-GitHub access type
+GitHub access type required for read-only operations
+
+#### Possible values
+
+`pull`, `push`, `admin`
+
+### `C2C__AUTH__GITHUB__ACCESS_TYPE_READ_WRITE`
+
+*Optional*, default value: `push`
+
+GitHub access type required for read-write operations
+
+#### Possible values
+
+`pull`, `push`, `admin`
+
+### `C2C__AUTH__GITHUB__ACCESS_TYPE_ADMIN`
+
+*Optional*, default value: `admin`
+
+GitHub access type required for admin operations
+
+#### Possible values
+
+`pull`, `push`, `admin`
 
 ### `C2C__AUTH__GITHUB__AUTHORIZE_URL`
 
