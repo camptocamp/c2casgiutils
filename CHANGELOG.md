@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **StringList type**: Added `StringList` type alias with `BeforeValidator` to parse comma-separated environment variable values into `list[str]`, applied to `Sentry.ignore_errors`, `Sentry.in_app_include`, `Sentry.in_app_exclude`, and `ProxyHeaders.trusted_hosts`.
 - **Async I/O compliance**: Replaced `aiofiles` usage in CLI logging config loading with `anyio.Path`, and removed direct `aiofiles` dependency from project metadata.
 - **GitHub auth sessions**: GitHub OAuth sessions now attempt to refresh expired access tokens automatically. If refresh is unavailable or fails, the auth cookie is cleared so users are logged out instead of remaining logged-in without repository permissions.
 - **Auth dependency ergonomics**: Added injectable `AccessContext` helpers with the methods `require_access`, `require_admin_access`, `check_access` and `check_admin_access` to simplify route protection code.
