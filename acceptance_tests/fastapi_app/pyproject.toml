@@ -35,8 +35,8 @@ prospector-profile-utils = "1.27.0"
 pytest = "9.1.1"
 c2cwsgiutils = { version = "6.1.10", extras = ["test_images"] }
 requests = "2.34.2"
-ruff = "0.16.1"
-pylint = "4.0.6"
+ruff = "0.16.2"
+pylint = "4.0.7"
 
 [project]
 name = "fastapi_app"
@@ -44,3 +44,4 @@ version = "0.1.0"
 description = "A sample c2casgiutils project with FastAPI"
 authors = [{name = "Camptocamp", email = "info@camptocamp.com"}]
 readme = "README.md"
+requires-python = ">=3.11"
