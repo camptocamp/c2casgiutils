@@ -44,3 +44,4 @@ version = "0.1.0"
 description = "A sample c2casgiutils project with FastAPI"
 authors = [{name = "Camptocamp", email = "info@camptocamp.com"}]
 readme = "README.md"
+requires-python = ">=3.11"
