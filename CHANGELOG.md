@@ -6,11 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **GitHub token authentication**: Added support for GitHub Personal Access Token (PAT) authentication via the `Authorization: Bearer <token>` HTTP header. AI agents and other clients can now authenticate programmatically without going through the OAuth web flow. The token is validated by calling the GitHub `/user` API.
+- **Read-only, read-write and admin access levels**: Replaced the single `access_type` setting with `access_type_read_only` (default: `pull`), `access_type_read_write` (default: `push`), and `access_type_admin` (default: `admin`) to allow finer-grained access control. The set log level endpoint now requires read-write access, while read-only operations (viewing headers, logging levels) only require read-only access.
+- **Auth method tracking**: Added `AuthMethod` enum and `type` field to `AuthInfo` to indicate how the user authenticated (`github_oauth`, `github_bearer`, `secret`, `test`, `none`).
+
+### Changed
+
+- **GitHub auth settings**: The `C2C__AUTH__GITHUB__ACCESS_TYPE` environment variable has been replaced by `C2C__AUTH__GITHUB__ACCESS_TYPE_READ_ONLY`, `C2C__AUTH__GITHUB__ACCESS_TYPE_READ_WRITE`, and `C2C__AUTH__GITHUB__ACCESS_TYPE_ADMIN`.
+- **Auth dependency ergonomics**: Added `require_read_only_access`, `require_read_write_access`, `require_admin_access`, `check_read_only_access`, `check_read_write_access`, and `check_admin_access` helpers with separate access levels.
+- **GitHub access types as enum**: `GitHubAccessType` is now a `StrEnum` (`pull`, `push`, `admin`) instead of a plain string.
+
+## [0.13.1] - 2026-07-23
+
+### Changed
+
+- **GitHub display name**: Fallback to user login when GitHub display name is null.
+
+## [0.13.0] - 2026-07-14
+
+### Added
+
+- **Duration type**: Added `Duration` type with short format and ISO 8601 duration parsing support.
+- **Redis options parsing**: Moved Redis options parsing to `config.py` as a computed field.
+
+## [0.12.0] - 2026-07-07
+
 ### Changed
 
 - **Async I/O compliance**: Replaced `aiofiles` usage in CLI logging config loading with `anyio.Path`, and removed direct `aiofiles` dependency from project metadata.
-- **GitHub auth sessions**: GitHub OAuth sessions now attempt to refresh expired access tokens automatically. If refresh is unavailable or fails, the auth cookie is cleared so users are logged out instead of remaining logged-in without repository permissions.
 - **Auth dependency ergonomics**: Added injectable `AccessContext` helpers with the methods `require_access`, `require_admin_access`, `check_access` and `check_admin_access` to simplify route protection code.
+- **GitHub auth sessions**: GitHub OAuth sessions now attempt to refresh expired access tokens automatically. If refresh is unavailable or fails, the auth cookie is cleared so users are logged out instead of remaining logged-in without repository permissions.
 - **GitHub auth expiration**: Added a configurable token expiration safety margin with `C2C__AUTH__GITHUB__ACCESS_TOKEN_EXPIRATION_MARGIN` (ISO 8601 duration, default `PT1M`) and removed duplicate token-refresh checks inside `check_access_config`.
 
 ## [0.11.0] - 2026-04-17
