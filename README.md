@@ -191,7 +191,7 @@ Then you can use the `echo_handler` function you will have the response of all t
 
 ## Health checks
 
-The `health_checks` module provides a flexible system for checking the health of various components of your application. Health checks are exposed through a REST API endpoint at `/c2c/health_checks` and are also integrated with Prometheus metrics.
+The `health_checks` module provides a flexible system for checking the health of various components of your application. Health checks are exposed through a REST API endpoint at `/c2c/health` and are also integrated with Prometheus metrics.
 
 ### Basic Usage
 
@@ -249,8 +249,8 @@ Health checks can be filtered using tags or names:
 
 - **Tags**: Add relevant tags when creating a check to categorize it
 - **API Filtering**: Use query parameters to filter checks when calling the API:
-  - `/c2c/health_checks?tags=database,critical` - Run only checks with "database" or "critical" tags
-  - `/c2c/health_checks?name=Redis` - Run only the Redis check
+  - `/c2c/health?tags=database,critical` - Run only checks with "database" or "critical" tags
+  - `/c2c/health?name=Redis` - Run only the Redis check
 
 ### Prometheus Integration
 
