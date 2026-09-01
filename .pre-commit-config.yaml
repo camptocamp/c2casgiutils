@@ -90,7 +90,7 @@ repos:
     hooks:
       - id: ripsecrets
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.2
+    rev: v0.16.4
     hooks:
       - id: ruff-format
         args:
@@ -112,7 +112,7 @@ repos:
           - prospector-profile-duplicated==1.12.0 # pypi
           - prospector-profile-utils==1.27.0 # pypi
           - pylint[spelling]==4.0.7 # pypi
-          - ruff==0.16.2 # pypi
+          - ruff==0.16.4 # pypi
         exclude: |-
           (?x)(
             ^tests?/?
@@ -131,7 +131,7 @@ repos:
           - --profile=utils:pre-commit
         additional_dependencies:
           - prospector-profile-utils==1.27.0 # pypi
-          - ruff==0.16.2 # pypi
+          - ruff==0.16.4 # pypi
           - pylint[spelling]==4.0.7 # pypi
         exclude: |-
           (?x)^(
@@ -144,10 +144,10 @@ repos:
         files: |-
           ^\.github/publish\.yaml$
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 44.27.0
+    rev: 44.40.0
     hooks:
       - id: renovate-config-validator
   - repo: https://github.com/sbrunner/python-versions-hook
-    rev: 1.4.0
+    rev: 1.4.1
     hooks:
       - id: python-versions
