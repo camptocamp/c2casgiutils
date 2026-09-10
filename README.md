@@ -572,6 +572,97 @@ if __name__ == "__main__":
     main()
 ```
 
+## Configuration types
+
+The `c2casgiutils.config` module provides reusable annotated types to use in your own
+`pydantic-settings` classes. They all accept the raw environment variable string and convert it
+to the expected Python type.
+
+```python
+from typing import Annotated
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from c2casgiutils.config import (
+    Duration,
+    IntList,
+    Path,
+    SiUnit,
+    SiUnitInt,
+    StringList,
+    parse_duration,
+    parse_path,
+    parse_si_unit,
+    parse_si_unit_int,
+)
+
+
+class Settings(BaseSettings):
+    """Application settings."""
+
+    timeout: Annotated[Duration, Field(description="Request timeout")] = parse_duration("30s")
+    log_max_size: Annotated[SiUnit, Field(description="Max size of a log file")] = parse_si_unit("10M")
+    node_max_old_space_size: Annotated[
+        SiUnitInt, Field(description="Node.js --max-old-space-size")
+    ] = parse_si_unit_int("3G")
+    template_dir: Annotated[Path, Field(description="Templates directory")] = parse_path("/app/templates")
+    modules: Annotated[StringList, Field(description="Enabled modules")] = []
+    priorities: Annotated[IntList, Field(description="Queue priorities")] = []
+
+    model_config = SettingsConfigDict(env_prefix="MY_APP__", env_nested_delimiter="__")
+```
+
+> [!IMPORTANT]
+> Pydantic does **not** validate the default values. A default must be wrapped in the matching
+> `parse_*` helper (`parse_duration(...)`, `parse_si_unit(...)`, `parse_si_unit_int(...)`,
+> `parse_path(...)`) otherwise the field keeps the raw type of the expression, e.g. a `str`
+> instead of an `anyio.Path`.
+
+### `Duration`
+
+A `datetime.timedelta` parsed from the ISO 8601 format (`PT3H`, `P30D`), from the short format
+(`2h30`, `1w2d3h4m5s`) or from a plain number of seconds (`300`). The supported units are
+`w` (weeks), `d` (days), `h` (hours), `m` (minutes) and `s` (seconds); when the last number has
+no unit it takes the next logical unit (`2h30` = 2h30m).
+
+### `SiUnit` and `SiUnitInt`
+
+A `float` (resp. an `int`) parsed from a number optionally followed by an SI prefix, optionally
+followed by the binary marker `i`, optionally followed by a single unit letter that is ignored
+(`B`, `o`, ...). `SiUnitInt` rounds the result to the nearest integer, and stays exact for very
+large values (`1Q` gives exactly `10**30`).
+
+All the [SI decimal prefixes](https://fr.wikipedia.org/wiki/Pr%C3%A9fixes_du_Syst%C3%A8me_international_d%27unit%C3%A9s)
+are supported:
+
+| Prefix | `Q` | `R` | `Y` | `Z` | `E` | `P` | `T` | `G` | `M` | `k` | `h` | `da` | – | `d` | `c` | `m` | `µ` | `n` | `p` | `f` | `a` | `z` | `y` | `r` | `q` |
+| ------ | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---- | - | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Name | quetta | ronna | yotta | zetta | exa | peta | tera | giga | mega | kilo | hecto | deca | – | deci | centi | milli | micro | nano | pico | femto | atto | zepto | yocto | ronto | quecto |
+| Factor | 10³⁰ | 10²⁷ | 10²⁴ | 10²¹ | 10¹⁸ | 10¹⁵ | 10¹² | 10⁹ | 10⁶ | 10³ | 10² | 10¹ | 1 | 10⁻¹ | 10⁻² | 10⁻³ | 10⁻⁶ | 10⁻⁹ | 10⁻¹² | 10⁻¹⁵ | 10⁻¹⁸ | 10⁻²¹ | 10⁻²⁴ | 10⁻²⁷ | 10⁻³⁰ |
+
+The binary [IEC prefixes](https://fr.wikipedia.org/wiki/Pr%C3%A9fixe_binaire) are also supported
+with a base of 1024 instead of 10: `Ki` (kibi), `Mi` (mebi), `Gi` (gibi), `Ti` (tebi),
+`Pi` (pebi), `Ei` (exbi), `Zi` (zebi) and `Yi` (yobi).
+
+> [!NOTE]
+> The decimal prefixes are case sensitive, as in the SI: `10M` is 10'000'000 (mega) while `10m`
+> is 0.01 (milli). `K` is accepted as a non-SI alias of `k` (kilo), `u` as an ASCII alias of
+> `µ` (micro), and `ki` as an alias of `Ki` (kibi).
+
+Examples: `1000`, `1k`, `1KiB`, `10M`, `1.5G`, `2Go`, `500MiB`, `5cm`, `1da`, `3µs`.
+
+### `Path`
+
+An [`anyio.Path`](https://anyio.readthedocs.io/en/stable/fileio.html) instead of a
+`pathlib.Path`, so that all the file system accesses done with the value are asynchronous.
+It accepts a string or any `os.PathLike` and is serialized back to a string.
+
+### `StringList`, `IntList` and `FloatList`
+
+A `list[str]` (resp. `list[int]`, `list[float]`) parsed from a comma-separated environment
+variable value, e.g. `MY_APP__MODULES=alpha,beta`.
+
 ## Environment variables
 
 See: https://github.com/camptocamp/c2casgiutils/blob/master/c2casgiutils/config.py
