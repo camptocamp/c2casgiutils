@@ -62,9 +62,7 @@ If you want to enable proxy host/proto/port rewriting in your project, add this 
 ```python
 app.add_middleware(
     headers.ArmorHeaderMiddleware,
-    headers_config={"http": {"headers": {"Strict-Transport-Security": None}}}
-    if config.settings.http
-    else {},
+    headers_config={"http": {"headers": {"Strict-Transport-Security": None}}} if config.settings.http else {},
 )
 
 if config.settings.proxy_headers.type != "none":
@@ -126,11 +124,13 @@ Changes have been made to the example application structure and configuration. I
 
     ```python
     # Update the handler signature
-    async def __echo_handler(*, message: str) -> dict[str, Any]: # Add *,
+    async def __echo_handler(*, message: str) -> dict[str, Any]:  # Add *,
         """Echo handler for broadcast messages."""
         return {"message": "Broadcast echo: " + message}
 
+
     _echo_handler = None
+
 
     async def startup(main_app: FastAPI) -> None:
         """Initialize application on startup."""
@@ -138,8 +138,9 @@ Changes have been made to the example application structure and configuration. I
         global _echo_handler
         _echo_handler = await broadcast.decorate(__echo_handler, expect_answers=True)
 
+
     # Call
-    await _echo_handler(message="coucou") # Mandatory: _echo_handler("coucou") will no longer work
+    await _echo_handler(message="coucou")  # Mandatory: _echo_handler("coucou") will no longer work
     ```
 
 4.  **Middleware Configuration**:
@@ -150,7 +151,7 @@ Changes have been made to the example application structure and configuration. I
     app.add_middleware(
         headers.ArmorHeaderMiddleware,
         headers_config={"http": {"headers": {"Strict-Transport-Security": None}}}
-        if not config.settings.http # Use config settings
+        if not config.settings.http  # Use config settings
         else {},
     )
     ```
