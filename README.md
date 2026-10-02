@@ -89,6 +89,7 @@ from prometheus_client import start_http_server
 from prometheus_fastapi_instrumentator import Instrumentator
 from contextlib import asynccontextmanager
 
+
 @asynccontextmanager
 async def _lifespan(main_app: FastAPI) -> None:
     """Handle application lifespan events."""
@@ -98,9 +99,10 @@ async def _lifespan(main_app: FastAPI) -> None:
 
     yield
 
+
 app = FastAPI(title="My fastapi_app application", lifespan=_lifespan)
 
-app.mount('/c2c', c2casgiutils.app)
+app.mount("/c2c", c2casgiutils.app)
 
 # For security headers (and compression)
 
@@ -122,10 +124,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(headers.ArmorHeaderMiddleware,
+app.add_middleware(
+    headers.ArmorHeaderMiddleware,
     headers_config={
         "http": {"headers": {"Strict-Transport-Security": None} if not config.settings.http else {}},
-    }
+    },
 )
 
 # Optional: trust host/port from forwarded proxy headers
@@ -148,7 +151,6 @@ instrumentator.instrument(app)
 To use the broadcasting you should do something like this:
 
 ```python
-
 import c2casgiutils
 from c2casgiutils.broadcast import MissingAnswer
 from c2casgiutils.broadcast import types as broadcast_types
@@ -160,17 +162,22 @@ class EchoResponse(BaseModel):
 
     result: list[dict[str, Any]] | None = None
 
+
 class EchoHandlerProto(Protocol):
-    async def __call__(self, *, message: str) -> list[broadcast_types.BroadcastResponse[EchoResponse]|MissingAnswer] | None: ...
+    async def __call__(
+        self, *, message: str
+    ) -> list[broadcast_types.BroadcastResponse[EchoResponse] | MissingAnswer] | None: ...
 
 
 # Late assignment
 echo_handler: EchoHandlerProto = None  # type: ignore[assignment]
 
+
 # Create a handler that will receive broadcasts
 async def _echo_handler(*, message: str) -> EchoResponse:
     """Echo handler for broadcast messages."""
     return EchoResponse(message="Broadcast echo: " + message)
+
 
 # Subscribe the handler to a channel on module import
 @asynccontextmanager
@@ -205,14 +212,15 @@ health_checks.FACTORY.add(health_checks.Redis(tags=["liveness", "redis", "all"])
 
 # Add SQLAlchemy database connection check
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
 health_checks.FACTORY.add(health_checks.SQLAlchemy(Session=your_async_sessionmaker, tags=["database", "all"]))
 
 # Add Alembic migration version check
-health_checks.FACTORY.add(health_checks.Alembic(
-    Session=your_async_sessionmaker,
-    config_file="alembic.ini",
-    tags=["migrations", "database", "all"]
-))
+health_checks.FACTORY.add(
+    health_checks.Alembic(
+        Session=your_async_sessionmaker, config_file="alembic.ini", tags=["migrations", "database", "all"]
+    )
+)
 ```
 
 ### Available Health Checks
@@ -230,6 +238,7 @@ You can create custom health checks by extending the `Check` base class:
 ```python
 from c2casgiutils.health_checks import Check, Result
 
+
 class MyCustomCheck(Check):
     async def check(self) -> Result:
         # Your check logic here
@@ -238,6 +247,7 @@ class MyCustomCheck(Check):
             return Result(status_code=200, payload={"message": "Everything is fine!"})
         except Exception as e:
             return Result(status_code=500, payload={"error": str(e)})
+
 
 # Add your custom check
 health_checks.FACTORY.add(MyCustomCheck(tags=["custom", "all"]))
@@ -299,41 +309,32 @@ from c2casgiutils.headers import ArmorHeaderMiddleware
 headers_config = {
     "api_endpoints": {
         "path_match": r"^/api/.*",  # Regex pattern for paths
-        "headers": {
-            "Access-Control-Allow-Origin": "*",
-            "X-Custom-Header": "api-value"
-        },
-        "order": 1  # Processing order
+        "headers": {"Access-Control-Allow-Origin": "*", "X-Custom-Header": "api-value"},
+        "order": 1,  # Processing order
     },
     "admin_section": {
         "netloc_match": r"^admin\..*",  # Regex for host matching
         "path_match": r"^/admin/.*",
-        "headers": {
-            "X-Robots-Tag": "noindex, nofollow"
-        },
+        "headers": {"X-Robots-Tag": "noindex, nofollow"},
         "status_code": 200,  # Only apply for specific status code
-        "order": 2
+        "order": 2,
     },
     "success_responses": {
-        "headers": {
-            "Cache-Control": ["public", "max-age=3600"]
-        },
+        "headers": {"Cache-Control": ["public", "max-age=3600"]},
         "status_code": (200, 299),  # Apply for a range of status codes (200-299)
-        "order": 3
+        "order": 3,
     },
     "api_methods": {
         "path_match": r"^/api/.*",
         "methods": ["GET", "HEAD"],  # Only apply for specific HTTP methods
-        "headers": {
-            "Cache-Control": ["public", "max-age=3600"]
-        },
-        "order": 4
+        "headers": {"Cache-Control": ["public", "max-age=3600"]},
+        "order": 4,
     },
     "remove_header": {
         "headers": {
             "Server": None  # Remove header by setting to None
         }
-    }
+    },
 }
 
 app.add_middleware(ArmorHeaderMiddleware, headers_config=headers_config)
@@ -347,22 +348,18 @@ Headers support multiple value types:
 headers_config = {
     # String value
     "X-Custom": "value",
-
     # List (joined with "; ")
     "Cache-Control": ["no-cache", "no-store", "must-revalidate"],
-
     # Dictionary (for complex headers like CSP)
     "Content-Security-Policy": {
         "default-src": ["'self'"],
         "script-src": ["'self'", "https://cdn.example.com"],
-        "style-src": ["'self'", "'unsafe-inline'"]
+        "style-src": ["'self'", "'unsafe-inline'"],
     },
-
     # List (joined with ", ") for Permissions-Policy
     "Permissions-Policy": ["geolocation=()", "microphone=()"],
-
     # Remove header
-    "Unwanted-Header": None
+    "Unwanted-Header": None,
 }
 ```
 
@@ -383,7 +380,7 @@ custom_config = {
                 "script-src": ["'self'", headers.CSP_NONCE],
                 "style-src": ["'self'", headers.CSP_NONCE],
             }
-        }
+        },
     }
 }
 ```
@@ -438,17 +435,13 @@ You can configure headers to be applied only for specific HTTP methods:
     "api_post_endpoints": {
         "path_match": r"^/api/.*",
         "methods": ["POST", "PUT", "PATCH"],  # Only apply for these methods
-        "headers": {
-            "Cache-Control": "no-store"
-        }
+        "headers": {"Cache-Control": "no-store"},
     },
     "api_get_endpoints": {
         "path_match": r"^/api/.*",
         "methods": ["GET", "HEAD"],  # Only apply for GET and HEAD requests
-        "headers": {
-            "Cache-Control": ["public", "max-age=3600"]
-        }
-    }
+        "headers": {"Cache-Control": ["public", "max-age=3600"]},
+    },
 }
 ```
 
@@ -471,7 +464,7 @@ from c2casgiutils import headers
                 "style-src-elem": ["'self'", ...],
             }
         },
-        "order": 1
+        "order": 1,
     }
 }
 ```
@@ -489,7 +482,7 @@ The `Cache-Control` header can be configured to control caching behavior for dif
         "headers": {
             "Cache-Control": ["public", "max-age=3600"]  # Cache for 1 hour
         },
-        "order": 1
+        "order": 1,
     }
 }
 ```
@@ -525,9 +518,11 @@ import os
 import sentry_sdk
 
 # Initialize Sentry if the URL is provided
-if config.settings.sentry.dsn or 'SENTRY_DSN' in os.environ:
+if config.settings.sentry.dsn or "SENTRY_DSN" in os.environ:
     _LOGGER.info("Sentry is enabled with URL: %s", config.settings.sentry.url or os.environ.get("SENTRY_DSN"))
-    sentry_sdk.init(**{k: v for k, v in config.settings.sentry.model_dump().items() if v is not None and k != "tags"})
+    sentry_sdk.init(
+        **{k: v for k, v in config.settings.sentry.model_dump().items() if v is not None and k != "tags"}
+    )
 
     for tag, value in config.settings.sentry.tags.items():
         sentry_sdk.set_tag(tag, value)
@@ -544,6 +539,7 @@ from c2casgiutils import cli
 import asyncio
 from argparse import ArgumentParser
 
+
 async def main_() -> None:
     """Main entry point for CLI."""
 
@@ -554,19 +550,20 @@ async def main_() -> None:
 
     # Initialize Sentry if the URL is provided
     if config.settings.sentry.dsn or "SENTRY_DSN" in os.environ:
-        _LOGGER.info("Sentry is enabled with URL: %s", config.settings.sentry.dsn or os.environ.get("SENTRY_DSN"))
+        _LOGGER.info(
+            "Sentry is enabled with URL: %s", config.settings.sentry.dsn or os.environ.get("SENTRY_DSN")
+        )
         sentry_sdk.init(**config.settings.sentry.model_dump())
 
     if c2casgiutils.config.settings.prometheus.port is not None:
         prometheus_client.start_http_server(c2casgiutils.config.settings.prometheus.port)
 
 
-
-
 # This method is required for console_scripts entry point
 def main() -> None:
     """Main entry point for CLI."""
     asyncio.run(main_())
+
 
 if __name__ == "__main__":
     main()
