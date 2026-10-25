@@ -4,11 +4,13 @@ import logging
 import os
 import re
 from enum import StrEnum
-from pathlib import Path
+from fractions import Fraction
 from typing import Annotated, Any, Literal, cast
 
+import anyio
 import yaml
-from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, GetCoreSchemaHandler, field_validator, model_validator
+from pydantic_core import CoreSchema, core_schema
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,7 +131,10 @@ class Sentry(BaseModel):
     add_full_stack: Annotated[bool, Field(description="Add full stack trace to events")] = False
     max_stack_frames: Annotated[int, Field(description="Maximum number of stack frames to capture")] = 100
     server_name: Annotated[str | None, Field(description="Server name for Sentry events")] = None
-    project_root: Annotated[str, Field(description="Root directory of the project")] = str(Path.cwd())
+    project_root: Annotated[str, Field(description="Root directory of the project")] = (
+        # `pathlib` is not allowed by the project rules and this default is computed synchronously.
+        os.getcwd()  # noqa: PTH109
+    )
     in_app_include: Annotated[
         StringList,
         Field(description="List of module prefixes that are in the app"),
@@ -239,6 +244,165 @@ def parse_duration(text: str | datetime.timedelta) -> datetime.timedelta:
 
 
 Duration = Annotated[datetime.timedelta, BeforeValidator(parse_duration)]
+
+
+# Exponent of the decimal (SI) prefixes, see:
+# https://fr.wikipedia.org/wiki/Pr%C3%A9fixes_du_Syst%C3%A8me_international_d%27unit%C3%A9s
+# `K` is not an SI symbol (kilo is `k`) but is accepted as a widely used alias.
+_SI_DECIMAL_PREFIXES: dict[str, int] = {
+    "Q": 30,  # quetta
+    "R": 27,  # ronna
+    "Y": 24,  # yotta
+    "Z": 21,  # zetta
+    "E": 18,  # exa
+    "P": 15,  # peta
+    "T": 12,  # tera
+    "G": 9,  # giga
+    "M": 6,  # mega
+    "k": 3,  # kilo
+    "K": 3,  # kilo (non-SI alias)
+    "h": 2,  # hecto
+    "da": 1,  # deca
+    "": 0,  # no prefix
+    "d": -1,  # deci
+    "c": -2,  # centi
+    "m": -3,  # milli
+    "\u00b5": -6,  # micro (MICRO SIGN)
+    "\u03bc": -6,  # micro (GREEK SMALL LETTER MU)
+    "u": -6,  # micro (ASCII alias)
+    "n": -9,  # nano
+    "p": -12,  # pico
+    "f": -15,  # femto
+    "a": -18,  # atto
+    "z": -21,  # zepto
+    "y": -24,  # yocto
+    "r": -27,  # ronto
+    "q": -30,  # quecto
+}
+
+# Exponent of the binary (IEC 60027-2) prefixes, the base is 1024 instead of 10.
+_SI_BINARY_PREFIXES: dict[str, int] = {
+    "Ki": 1,  # kibi
+    "ki": 1,  # kibi (non-IEC alias)
+    "Mi": 2,  # mebi
+    "Gi": 3,  # gibi
+    "Ti": 4,  # tebi
+    "Pi": 5,  # pebi
+    "Ei": 6,  # exbi
+    "Zi": 7,  # zebi
+    "Yi": 8,  # yobi
+}
+
+# Sorted by descending length to match the two letters prefix `da` before the one letter prefix `d`,
+# the empty prefix is not part of the pattern.
+_SI_DECIMAL_PATTERN = "|".join(
+    re.escape(prefix) for prefix in sorted(_SI_DECIMAL_PREFIXES, key=len, reverse=True) if prefix
+)
+_SI_UNIT_RE = re.compile(rf"^([+-]?\d+(?:\.\d+)?)({_SI_DECIMAL_PATTERN})?(i)?([a-zA-Z]?)$")
+
+
+def _parse_si_unit(text: str | float) -> Fraction:
+    """
+    Parse an SI unit string to an exact fraction.
+
+    See `parse_si_unit` for the supported syntax.
+    """
+    if not isinstance(text, str):
+        # Also covers int, Fraction and Decimal inputs.
+        return Fraction(text)
+    match = _SI_UNIT_RE.match(text.strip())
+    if not match:
+        message = f"Invalid SI unit: {text}"
+        raise ValueError(message)
+    value = Fraction(match.group(1))
+    prefix = match.group(2) or ""
+    if match.group(3):
+        if not prefix:
+            message = f"Invalid binary SI unit prefix: {text}"
+            raise ValueError(message)
+        binary_exponent = _SI_BINARY_PREFIXES.get(f"{prefix}i")
+        if binary_exponent is None:
+            message = f"Invalid binary SI unit prefix: {text}"
+            raise ValueError(message)
+        return value * Fraction(1024) ** binary_exponent
+    return value * Fraction(10) ** _SI_DECIMAL_PREFIXES[prefix]
+
+
+def parse_si_unit(text: str | float) -> float:
+    """
+    Parse an SI unit string to a float.
+
+    The value is a number optionally followed by an SI prefix, optionally followed by the binary
+    marker `i`, optionally followed by a single unit letter that is ignored (`B`, `o`, ...).
+
+    All the SI decimal prefixes are supported and are case sensitive:
+    `Q` (quetta), `R` (ronna), `Y` (yotta), `Z` (zetta), `E` (exa), `P` (peta), `T` (tera),
+    `G` (giga), `M` (mega), `k` (kilo), `h` (hecto), `da` (deca), `d` (deci), `c` (centi),
+    `m` (milli), `µ`/`μ`/`u` (micro), `n` (nano), `p` (pico), `f` (femto), `a` (atto),
+    `z` (zepto), `y` (yocto), `r` (ronto), `q` (quecto).
+    `K` is also accepted as a non-SI alias of `k` (kilo).
+
+    The binary (IEC) prefixes are supported by adding an `i` after the prefix, they use a base
+    of 1024 instead of 10: `Ki` (kibi), `Mi` (mebi), `Gi` (gibi), `Ti` (tebi), `Pi` (pebi),
+    `Ei` (exbi), `Zi` (zebi), `Yi` (yobi).
+
+    Note that the decimal prefixes are case sensitive, `10M` is 10'000'000 (mega) while
+    `10m` is 0.01 (milli).
+
+    Examples: 1000, 1k, 1KiB, 10M, 1.5G, 2Go, 500MiB, 5cm, 1da, 3µs
+
+    Note that Pydantic does not validate the default values, a default must be wrapped in
+    `parse_si_unit(...)` to be a float, e.g.: `= parse_si_unit("100M")`.
+    """
+    return float(_parse_si_unit(text))
+
+
+def parse_si_unit_int(text: str | float) -> int:
+    """
+    Parse an SI unit string to an int.
+
+    See `parse_si_unit` for the supported syntax. The result is rounded to the nearest integer
+    (Python's banker's rounding), e.g. `1.5K` gives 1500 and `1.5m` gives 0.
+
+    Note that Pydantic does not validate the default values, a default must be wrapped in
+    `parse_si_unit_int(...)` to be an int, e.g.: `= parse_si_unit_int("100M")`.
+    """
+    return round(_parse_si_unit(text))
+
+
+SiUnit = Annotated[float, BeforeValidator(parse_si_unit)]
+SiUnitInt = Annotated[int, BeforeValidator(parse_si_unit_int)]
+
+
+def parse_path(value: str | os.PathLike[str]) -> anyio.Path:
+    """
+    Convert a string or any path-like object to an `anyio.Path`.
+
+    Note that Pydantic does not validate the default values, a default must be wrapped in
+    `parse_path(...)` to be an `anyio.Path`, e.g.: `= parse_path("/app/templates")`.
+    """
+    if isinstance(value, anyio.Path):
+        # Avoid creating a new wrapper around an already existing `anyio.Path`.
+        return value
+    return anyio.Path(value)
+
+
+class _AnyioPathAnnotation:
+    """Pydantic annotation that validates the values into an `anyio.Path`."""
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type: object, _handler: GetCoreSchemaHandler) -> CoreSchema:
+        """Build the Pydantic core schema of the `Path` type."""
+        return core_schema.no_info_after_validator_function(
+            parse_path,
+            # `os.PathLike` covers `pathlib.Path` and `anyio.Path`.
+            core_schema.union_schema([core_schema.str_schema(), core_schema.is_instance_schema(os.PathLike)]),
+            serialization=core_schema.plain_serializer_function_ser_schema(str, when_used="always"),
+        )
+
+
+Path = Annotated[anyio.Path, _AnyioPathAnnotation()]
+"""Path type that is validated into an `anyio.Path` and serialized as a string."""
 
 
 class GitHubAccessType(StrEnum):
