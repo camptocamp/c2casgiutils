@@ -1,5 +1,5 @@
 # Copyright (c) 2025-2026, Camptocamp SA
-import datetime
+import datetime as dt
 import logging
 import os
 import re
@@ -169,7 +169,7 @@ class Sentry(BaseModel):
         return self
 
 
-class _IsoTimedelta(datetime.timedelta):
+class _IsoTimedelta(dt.timedelta):
     def __str__(self) -> str:
         total_seconds = int(self.total_seconds())
         hours, remainder = divmod(total_seconds, 3600)
@@ -201,7 +201,7 @@ def _next_unit(unit: str) -> str:
     return _unit_to_name(order[idx + 1]) if idx + 1 < len(order) else "seconds"
 
 
-def parse_duration(text: str | datetime.timedelta) -> datetime.timedelta:
+def parse_duration(text: str | dt.timedelta) -> dt.timedelta:
     """
     Parse a duration string to a timedelta.
 
@@ -212,12 +212,12 @@ def parse_duration(text: str | datetime.timedelta) -> datetime.timedelta:
     (e.g. 2h30 = 2h30m, 2m30 = 2m30s).
     A plain number string (e.g. "300") is treated as seconds.
     """
-    if isinstance(text, datetime.timedelta):
+    if isinstance(text, dt.timedelta):
         return text
     match = _ISO_DURATION_RE.match(text)
     if match:
         parts = match.groups()
-        return datetime.timedelta(
+        return dt.timedelta(
             days=int(parts[2] or 0),
             hours=int(parts[3] or 0),
             minutes=int(parts[4] or 0),
@@ -233,12 +233,12 @@ def parse_duration(text: str | datetime.timedelta) -> datetime.timedelta:
                 last_unit = unit
             else:
                 kwargs.setdefault(_next_unit(last_unit), int(value))
-        return datetime.timedelta(**kwargs)
+        return dt.timedelta(**kwargs)
     message = f"Invalid time delta: {text}"
     raise ValueError(message)
 
 
-Duration = Annotated[datetime.timedelta, BeforeValidator(parse_duration)]
+Duration = Annotated[dt.timedelta, BeforeValidator(parse_duration)]
 
 
 class GitHubAccessType(StrEnum):
@@ -302,9 +302,9 @@ class AuthGitHub(BaseModel):
 
     @field_validator("access_token_expiration_margin")
     @classmethod
-    def validate_access_token_expiration_margin(cls, value: datetime.timedelta) -> datetime.timedelta:
+    def validate_access_token_expiration_margin(cls, value: dt.timedelta) -> dt.timedelta:
         """Validate that access_token_expiration_margin is not negative."""
-        if value < datetime.timedelta(0):
+        if value < dt.timedelta(0):
             message = "C2C__AUTH__GITHUB__ACCESS_TOKEN_EXPIRATION_MARGIN must be >= PT0S"
             raise ValueError(message)
         return value

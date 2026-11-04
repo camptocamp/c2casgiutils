@@ -1,5 +1,5 @@
 # Copyright (c) 2025-2026, Camptocamp SA
-import datetime
+import datetime as dt
 import os
 
 import pytest
@@ -14,27 +14,27 @@ from c2casgiutils.config import (
 
 
 def test_parse_duration_iso():
-    assert parse_duration("PT1M") == datetime.timedelta(minutes=1)
-    assert parse_duration("PT2M30S") == datetime.timedelta(minutes=2, seconds=30)
-    assert parse_duration("PT1H") == datetime.timedelta(hours=1)
-    assert parse_duration("P1D") == datetime.timedelta(days=1)
+    assert parse_duration("PT1M") == dt.timedelta(minutes=1)
+    assert parse_duration("PT2M30S") == dt.timedelta(minutes=2, seconds=30)
+    assert parse_duration("PT1H") == dt.timedelta(hours=1)
+    assert parse_duration("P1D") == dt.timedelta(days=1)
 
 
 def test_parse_duration_short():
-    assert parse_duration("10m") == datetime.timedelta(minutes=10)
-    assert parse_duration("2h30") == datetime.timedelta(hours=2, minutes=30)
-    assert parse_duration("1d") == datetime.timedelta(days=1)
-    assert parse_duration("1w") == datetime.timedelta(weeks=1)
-    assert parse_duration("1w2d3h4m5s") == datetime.timedelta(weeks=1, days=2, hours=3, minutes=4, seconds=5)
+    assert parse_duration("10m") == dt.timedelta(minutes=10)
+    assert parse_duration("2h30") == dt.timedelta(hours=2, minutes=30)
+    assert parse_duration("1d") == dt.timedelta(days=1)
+    assert parse_duration("1w") == dt.timedelta(weeks=1)
+    assert parse_duration("1w2d3h4m5s") == dt.timedelta(weeks=1, days=2, hours=3, minutes=4, seconds=5)
 
 
 def test_parse_duration_plain_seconds():
-    assert parse_duration("300") == datetime.timedelta(seconds=300)
-    assert parse_duration("0") == datetime.timedelta(seconds=0)
+    assert parse_duration("300") == dt.timedelta(seconds=300)
+    assert parse_duration("0") == dt.timedelta(seconds=0)
 
 
 def test_parse_duration_timedelta_passthrough():
-    td = datetime.timedelta(minutes=5)
+    td = dt.timedelta(minutes=5)
     assert parse_duration(td) is td
 
 
@@ -168,7 +168,7 @@ def test_auth_github_access_token_expiration_margin_from_environment(clean_env):
 
     settings = Settings()
 
-    assert settings.auth.github.access_token_expiration_margin == datetime.timedelta(minutes=2, seconds=30)
+    assert settings.auth.github.access_token_expiration_margin == dt.timedelta(minutes=2, seconds=30)
 
 
 def test_auth_github_access_token_expiration_margin_short_format(clean_env):
@@ -176,7 +176,7 @@ def test_auth_github_access_token_expiration_margin_short_format(clean_env):
 
     settings = Settings()
 
-    assert settings.auth.github.access_token_expiration_margin == datetime.timedelta(minutes=5)
+    assert settings.auth.github.access_token_expiration_margin == dt.timedelta(minutes=5)
 
 
 def test_auth_github_access_token_expiration_margin_plain_seconds(clean_env):
@@ -184,7 +184,7 @@ def test_auth_github_access_token_expiration_margin_plain_seconds(clean_env):
 
     settings = Settings()
 
-    assert settings.auth.github.access_token_expiration_margin == datetime.timedelta(seconds=120)
+    assert settings.auth.github.access_token_expiration_margin == dt.timedelta(seconds=120)
 
 
 def test_redis_options_none():
