@@ -91,8 +91,6 @@ classifiers = [
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    'Programming Language :: Python :: 3.13',
     'Topic :: Internet :: WWW/HTTP :: WSGI :: Application',
     'Typing :: Typed',
 ]
@@ -110,7 +108,7 @@ include = [
   "c2casgiutils/tools/templates/*",
 ]
 requires-python = ">=3.11"
-dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "prometheus-fastapi-instrumentator", "redis", "aiohttp", "pyjwt", "sentry-sdk[fastapi]", "anyio", "pyyaml"]
+dependencies = ["pydantic-settings", "aiofile", "prometheus-client", "redis", "aiohttp", "pyjwt", "anyio", "pyyaml"]
 
 [project.urls]
 Repository = "https://github.com/camptocamp/c2casgiutils"

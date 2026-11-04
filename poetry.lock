@@ -265,9 +265,10 @@ tz = ["tzdata"]
 name = "annotated-doc"
 version = "0.0.5"
 description = "Document parameters, class attributes, return types, and variables inline, with Annotated."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"fastapi\" or extra == \"all\" or extra == \"sentry\""
 files = [
     {file = "annotated_doc-0.0.5-py3-none-any.whl", hash = "sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101"},
     {file = "annotated_doc-0.0.5.tar.gz", hash = "sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb"},
@@ -522,6 +523,7 @@ files = [
     {file = "certifi-2026.10.23-py3-none-any.whl", hash = "sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1"},
     {file = "certifi-2026.10.23.tar.gz", hash = "sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd"},
 ]
+markers = {main = "extra == \"fastapi\" or extra == \"all\" or extra == \"sentry\""}
 
 [[package]]
 name = "charset-normalizer"
@@ -828,9 +830,10 @@ idna = ">=2.0.0"
 name = "fastapi"
 version = "0.162.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"fastapi\" or extra == \"all\" or extra == \"sentry\""
 files = [
     {file = "fastapi-0.162.0-py3-none-any.whl", hash = "sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c"},
     {file = "fastapi-0.162.0.tar.gz", hash = "sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f"},
@@ -2283,9 +2286,10 @@ files = [
 name = "opentelemetry-api"
 version = "1.45.1"
 description = "OpenTelemetry Python API"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"fastapi\" or extra == \"all\" or extra == \"sentry\""
 files = [
     {file = "opentelemetry_api-1.45.1-py3-none-any.whl", hash = "sha256:b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb"},
     {file = "opentelemetry_api-1.45.1.tar.gz", hash = "sha256:aa38ed19bcc084ba42782a73255b3582283eced7ad6dddbd6695189e69adfb75"},
@@ -2521,9 +2525,10 @@ twisted = ["twisted"]
 name = "prometheus-fastapi-instrumentator"
 version = "8.1.0"
 description = "Instrument your FastAPI app with Prometheus metrics"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"prometheus\" or extra == \"all\""
 files = [
     {file = "prometheus_fastapi_instrumentator-8.1.0-py3-none-any.whl", hash = "sha256:b9f40b2cff3f7891ca0610b3ae4fc6ec723fd326b04bb659819aaeb821a0fc7d"},
     {file = "prometheus_fastapi_instrumentator-8.1.0.tar.gz", hash = "sha256:b77f3043665e8d28e2bbd21017506195a43d9adf1d402d01bf95b494b7e560e1"},
@@ -3666,9 +3671,10 @@ native = ["fast-semver-rs-backend (>=0.1.1) ; platform_python_implementation == 
 name = "sentry-sdk"
 version = "2.73.0"
 description = "Python client for Sentry (https://sentry.io)"
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
+markers = "extra == \"fastapi\" or extra == \"all\" or extra == \"sentry\""
 files = [
     {file = "sentry_sdk-2.73.0-py3-none-any.whl", hash = "sha256:0bcfa6928ea5adbb89591858b514d27adac27c7a3cccc31b20ed10e0b09eda9e"},
     {file = "sentry_sdk-2.73.0.tar.gz", hash = "sha256:4a2ab97b16e4693c325ab361c7bbbb346dbc7d0bc0150922d795a25bac8d5280"},
@@ -3924,9 +3930,10 @@ sqlcipher = ["sqlcipher3_binary"]
 name = "starlette"
 version = "1.10.0"
 description = "The little ASGI library that shines."
-optional = false
+optional = true
 python-versions = ">=3.11"
 groups = ["main"]
+markers = "extra == \"fastapi\" or extra == \"all\" or extra == \"sentry\" or extra == \"prometheus\""
 files = [
     {file = "starlette-1.10.0-py3-none-any.whl", hash = "sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4"},
     {file = "starlette-1.10.0.tar.gz", hash = "sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b"},
@@ -4084,6 +4091,7 @@ files = [
     {file = "urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"},
     {file = "urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63"},
 ]
+markers = {main = "extra == \"fastapi\" or extra == \"all\" or extra == \"sentry\""}
 
 [package.extras]
 brotli = ["brotli (>=1.2.0) ; platform_python_implementation == \"CPython\"", "brotlicffi (>=1.2.0.0) ; platform_python_implementation != \"CPython\""]
@@ -4570,4 +4578,4 @@ sqlalchemy = ["sqlalchemy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "b48d3f981fc39bd21c5dd3caad066e4643085e55a37b22f81b8b0991d0a6a06a"
+content-hash = "a051c1738504658074c9f5eb32570acd0a1dd74466d4d203ccf3a76eca8f789f"
