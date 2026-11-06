@@ -1,5 +1,5 @@
 # Copyright (c) 2025-2026, Camptocamp SA
-import datetime
+import datetime as dt
 import logging
 import secrets
 import urllib.parse
@@ -195,7 +195,7 @@ def _logout_user(request: Request, response: Response, auth_info: AuthInfo) -> N
 
 def _now_utc_timestamp() -> int:
     """Get the current UTC timestamp in seconds."""
-    return int(datetime.datetime.now(datetime.UTC).timestamp())
+    return int(dt.datetime.now(dt.UTC).timestamp())
 
 
 def _is_expired(expiration_timestamp: float | None) -> bool:
@@ -752,8 +752,8 @@ def _set_jwt_cookie(
 
     jwt_payload = {
         **payload,
-        "exp": datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=expiration),
-        "iat": datetime.datetime.now(datetime.UTC),
+        "exp": dt.datetime.now(dt.UTC) + dt.timedelta(seconds=expiration),
+        "iat": dt.datetime.now(dt.UTC),
     }
     response.set_cookie(
         key=cookie_name,

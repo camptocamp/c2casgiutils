@@ -1,4 +1,4 @@
 poetry==2.5.1
-pre-commit==4.6.2
+pre-commit==4.7.0
 c2cciutils==1.7.5
 urllib3>=2.5.0 # not directly required, pinned by Snyk to avoid a vulnerability

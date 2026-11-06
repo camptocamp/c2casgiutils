@@ -43,7 +43,7 @@ acceptance_up: build ## Start the fastapi application for acceptance tests
 .PHONY: acceptance_poetry
 acceptance_poetry: acceptance_tests/fastapi_app/pyproject.toml acceptance_tests/fastapi_app/poetry.lock ## Install poetry dependencies for fastapi application
 	(cd acceptance_tests/fastapi_app/ && poetry install --all-groups --all-extras)
-	(cd acceptance_tests/fastapi_app/ && poetry run pip install --editable=../..)
+	(cd acceptance_tests/fastapi_app/ && poetry run pip install '--editable=../..[all]')
 
 .PHONY: acceptance_prospector
 acceptance_prospector: acceptance_poetry ## Run prospector for fastapi application
